@@ -493,40 +493,31 @@ export default async function handler(req: any, res: any) {
     if (hasRealSmtp) {
       try {
         const configuredHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
-        const isGmail =
-          configuredHost.toLowerCase().includes("gmail") ||
-          configuredHost.toLowerCase().includes("google") ||
-          cleanSmtpUser.toLowerCase().includes("@gmail.com");
+        const configuredPort = Number(process.env.SMTP_PORT) || 465;
+        const isSecure = configuredPort === 465 || process.env.SMTP_SECURE === "true";
 
-        const transporter = isGmail
-          ? nodemailer.createTransport({
-              service: "gmail",
-              auth: {
-                user: cleanSmtpUser,
-                pass: cleanSmtpPass,
-              },
-              tls: {
-                rejectUnauthorized: false,
-              },
-            })
-          : nodemailer.createTransport({
-              host: configuredHost,
-              port: Number(process.env.SMTP_PORT) || 465,
-              secure:
-                process.env.SMTP_SECURE === "true" ||
-                !process.env.SMTP_PORT ||
-                process.env.SMTP_PORT === "465",
-              auth: {
-                user: cleanSmtpUser,
-                pass: cleanSmtpPass,
-              },
-              tls: {
-                rejectUnauthorized: false,
-              },
-            });
+        const transporter = nodemailer.createTransport({
+          host: configuredHost,
+          port: configuredPort,
+          secure: isSecure,
+          auth: {
+            user: cleanSmtpUser,
+            pass: cleanSmtpPass,
+          },
+          connectionTimeout: 8000,
+          greetingTimeout: 8000,
+          socketTimeout: 10000,
+          tls: {
+            rejectUnauthorized: false,
+          },
+        });
+
+        const senderFrom = cleanSmtpUser.includes("<")
+          ? cleanSmtpUser
+          : `"AI Business Check-up" <${cleanSmtpUser}>`;
 
         const mailOptions: any = {
-          from: `"AI Business Check-up" <${process.env.SMTP_FROM || cleanSmtpUser}>`,
+          from: senderFrom,
           to: email,
           subject: emailSubject,
           text: textContent || reportSummary || "Báo cáo chiến lược điều hành doanh nghiệp",
