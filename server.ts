@@ -65,6 +65,40 @@ async function startServer() {
     });
   });
 
+  // API Generate High-Fidelity PDF Vector File directly
+  app.post("/api/generate-pdf", async (req, res) => {
+    try {
+      let payload = req.body;
+      if (typeof payload === "string") {
+        try {
+          payload = JSON.parse(payload);
+        } catch (e) {}
+      }
+      payload = payload || {};
+
+      const businessName = payload.businessName || "Doanh_Nghiep";
+      const asciiBusinessName = businessName
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_]/g, "");
+      const fileName = `Bao_Cao_Chien_Luoc_CEO_${asciiBusinessName || "Doanh_Nghiep"}.pdf`;
+
+      const pdfBuffer = await generateExecutivePdfBuffer(payload);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.setHeader("Content-Length", pdfBuffer.length);
+      return res.status(200).send(pdfBuffer);
+    } catch (err: any) {
+      console.error("Lỗi tạo PDF trên server:", err);
+      return res.status(500).json({ status: "error", message: err.message || "Lỗi tạo PDF" });
+    }
+  });
+
   // API Send Report via Email with real attachment and auto-dispatch
   app.post("/api/send-email", async (req, res) => {
     try {
