@@ -136,7 +136,7 @@ export async function generateExecutivePdfBuffer(data: ReportEmailData): Promise
   doc.setDrawColor(245, 158, 11);
   doc.rect(margin, currentY, contentWidth, 18, 'FD');
 
-  const ifOneThing = sanitizePdfText(data.ifOnlyOneThing) || 'Khai thac toi da gia tri vong doi khach hang cu thong qua chuoi cham soc tu dong de tang bien loi nhuan gop ngay lap tuc.';
+  const ifOneThing = sanitizePdfText(data.ifOnlyOneThing?.action) || 'Khai thac toi da gia tri vong doi khach hang cu thong qua chuoi cham soc tu dong de tang bien loi nhuan gop ngay lap tuc.';
   doc.setTextColor(146, 64, 14);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
@@ -159,7 +159,7 @@ export async function generateExecutivePdfBuffer(data: ReportEmailData): Promise
   const insights = [
     {
       title: 'DONG TIEN & HIEN TRANG',
-      text: sanitizePdfText(data.threeKeyInsights?.currentState) || 'Nguon thu on dinh nhung chi phi duy tri bo may can duoc tinh gon bang cong nghe.',
+      text: sanitizePdfText(data.threeKeyInsights?.greatestStrength) || 'Nguon thu on dinh nhung chi phi duy tri bo may can duoc tinh gon bang cong nghe.',
       bg: [239, 246, 255],
       border: [191, 219, 254],
       titleColor: [30, 64, 175],
@@ -173,7 +173,7 @@ export async function generateExecutivePdfBuffer(data: ReportEmailData): Promise
     },
     {
       title: 'CO HOI BUT PHA',
-      text: sanitizePdfText(data.threeKeyInsights?.goldenOpportunity) || 'Ung dung AI vao tu van va cham soc khach hang giup giam 40% thoi gian xu ly don hang.',
+      text: sanitizePdfText(data.threeKeyInsights?.mostPromisingOpportunity) || 'Ung dung AI vao tu van va cham soc khach hang giup giam 40% thoi gian xu ly don hang.',
       bg: [240, 253, 244],
       border: [187, 247, 208],
       titleColor: [22, 101, 52],
@@ -207,18 +207,19 @@ export async function generateExecutivePdfBuffer(data: ReportEmailData): Promise
   doc.text('4. LO TRINH HANH DONG 90 NGAY CUA CEO (90-DAY EXECUTION ROADMAP)', margin, currentY);
 
   currentY += 4;
+  const planArr = Array.isArray(data.ninetyDayPlan) ? data.ninetyDayPlan : [];
   const phases = [
     {
       label: 'GIAI DOAN 1 (NGAY 1 - 30): BIT LO RO RI',
-      action: sanitizePdfText(data.ninetyDayPlan?.phase1) || 'Thanh loc chi phi thua, toi uu conversion rate phan dau pheu, ra soat cong no.',
+      action: sanitizePdfText(planArr[0]?.objective || planArr[0]?.title) || 'Thanh loc chi phi thua, toi uu conversion rate phan dau pheu, ra soat cong no.',
     },
     {
       label: 'GIAI DOAN 2 (NGAY 31 - 60): CHUAN HOA HE THONG',
-      action: sanitizePdfText(data.ninetyDayPlan?.phase2) || 'Dong goi SOP van hanh, tich hop cong cu AI ho tro CSKH, xay dung KPI minh bach.',
+      action: sanitizePdfText(planArr[1]?.objective || planArr[1]?.title) || 'Dong goi SOP van hanh, tich hop cong cu AI ho tro CSKH, xay dung KPI minh bach.',
     },
     {
       label: 'GIAI DOAN 3 (NGAY 61 - 90): TANG TRUONG & TANG TOC',
-      action: sanitizePdfText(data.ninetyDayPlan?.phase3) || 'Mo rong kenh tiep can moi, ung dung don bay tai chinh an toan va dao tao ke thua.',
+      action: sanitizePdfText(planArr[2]?.objective || planArr[2]?.title) || 'Mo rong kenh tiep can moi, ung dung don bay tai chinh an toan va dao tao ke thua.',
     },
   ];
 
