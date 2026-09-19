@@ -22,6 +22,16 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    let payload = req.body;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch (e) {
+        console.warn("Lỗi parse string body:", e);
+      }
+    }
+    payload = payload || {};
+
     const {
       email,
       receiverName,
@@ -37,23 +47,27 @@ export default async function handler(req: any, res: any) {
       ninetyDayPlan,
       radarScores,
       profile,
-    } = req.body || {};
+    } = payload;
 
     if (!email || !email.includes("@")) {
-      return res.status(400).json({ status: "error", message: "Địa chỉ email không hợp lệ" });
+      return res.status(400).json({ status: "error", message: "Địa chỉ email nhận không hợp lệ" });
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY || "";
+    const cleanSmtpUser = (process.env.SMTP_USER || "").trim();
+    const cleanSmtpPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || "").replace(/\s+/g, "").trim();
+    const hasRealSmtp = Boolean(cleanSmtpUser && cleanSmtpPass);
+
+    const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
     const resend = resendApiKey ? new Resend(resendApiKey) : null;
-    const hasRealSmtp = Boolean(
-      process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.SMTP_PASSWORD)
-    );
+
+    console.log(`[VERCEL API] Gửi mail tới: ${email}, SMTP active: ${hasRealSmtp}, Resend active: ${Boolean(resend)}`);
 
     if (!resend && !hasRealSmtp) {
       return res.status(400).json({
-        status: "error",
+        status: "needs_smtp_config",
+        isRealDelivery: false,
         message:
-          "Chưa cấu hình dịch vụ gửi mail. Vui lòng thêm RESEND_API_KEY hoặc thông tin SMTP (SMTP_USER, SMTP_PASS) vào Vercel Environment Variables và Redeploy lại.",
+          "Hệ thống chưa nhận được cấu hình gửi email trên Vercel. Vui lòng kiểm tra lại biến SMTP_USER, SMTP_PASS và bấm Redeploy trên Vercel.",
       });
     }
 
@@ -70,7 +84,7 @@ export default async function handler(req: any, res: any) {
       .replace(/[^a-zA-Z0-9_]/g, "");
     const pdfFileName = `Bao_Cao_Chien_Luoc_CEO_${asciiBusinessName || "Doanh_Nghiep"}.pdf`;
 
-    // 1. Tạo buffer PDF
+    // 1. Tạo buffer PDF (Vector hoặc fallback)
     let pdfBuffer: Buffer | null = null;
     try {
       pdfBuffer = await generateExecutivePdfBuffer({
@@ -118,9 +132,97 @@ export default async function handler(req: any, res: any) {
       pdfFileSizeKb,
     });
 
-    // 3. Gửi qua Resend nếu có Resend API Key
+    let lastError: any = null;
+
+    // 3. NẾU CÓ CẤU HÌNH SMTP (GMAIL SMTP HOẶC MÁY CHỦ KHÁC) - ƯU TIÊN CHẠY SMTP TRƯỚC VÌ KHÔNG BỊ GIỚI HẠN ONBOARDING CỦA RESEND
+    if (hasRealSmtp) {
+      try {
+        console.log(`[SMTP] Đang gửi qua SMTP (${cleanSmtpUser}) tới ${email}...`);
+        const isGmail =
+          (process.env.SMTP_HOST || "").toLowerCase().includes("gmail") ||
+          cleanSmtpUser.toLowerCase().includes("@gmail.com");
+
+        const transporter = isGmail
+          ? nodemailer.createTransport({
+              service: "gmail",
+              auth: {
+                user: cleanSmtpUser,
+                pass: cleanPass,
+              },
+            })
+          : nodemailer.createTransport({
+              host: process.env.SMTP_HOST || "smtp.gmail.com",
+              port: Number(process.env.SMTP_PORT) || 465,
+              secure:
+                process.env.SMTP_SECURE === "true" ||
+                !process.env.SMTP_PORT ||
+                process.env.SMTP_PORT === "465",
+              auth: {
+                user: cleanSmtpUser,
+                pass: cleanPass,
+              },
+            });
+
+        const mailOptions: any = {
+          from: `"AI Business Check-up" <${process.env.SMTP_FROM || cleanSmtpUser}>`,
+          to: email,
+          subject: emailSubject,
+          text: textContent || reportSummary || "Báo cáo chẩn đoán chiến lược doanh nghiệp",
+          html: emailHtml,
+          attachments: pdfBuffer
+            ? [
+                {
+                  filename: pdfFileName,
+                  content: pdfBuffer,
+                  contentType: "application/pdf",
+                },
+              ]
+            : [],
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[SMTP SUCCESS] Đã gửi thành công qua SMTP! ID: ${info.messageId}`);
+
+        return res.json({
+          status: "ok",
+          isRealDelivery: true,
+          provider: "smtp",
+          message: `Báo cáo chiến lược cho doanh nghiệp "${businessName || "Doanh nghiệp"}" đã được chuyển phát thành công vào hộp thư ${email}!`,
+          messageId: info.messageId,
+          deliveredTo: email,
+          attachmentName: pdfFileName,
+          attachmentSize: `${pdfFileSizeKb} KB`,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (smtpErr: any) {
+        console.error("[SMTP ERROR]", smtpErr);
+        lastError = smtpErr;
+        // Nếu không có Resend để fallback, trả về lỗi chi tiết ngay để người dùng biết cách sửa
+        if (!resend) {
+          let errorExplanation = smtpErr.message || String(smtpErr);
+          if (
+            errorExplanation.includes("535") ||
+            errorExplanation.includes("Username and Password not accepted") ||
+            smtpErr.code === "EAUTH"
+          ) {
+            errorExplanation =
+              "Lỗi xác thực Gmail (EAUTH 535): Google từ chối mật khẩu. Bạn cần tạo 'Mật khẩu ứng dụng' (App Password 16 chữ cái) trong tài khoản Google, không dùng mật khẩu đăng nhập Gmail thông thường.";
+          }
+          return res.status(400).json({
+            status: "smtp_error",
+            isRealDelivery: false,
+            message: errorExplanation,
+            detail: smtpErr.message,
+            attachmentName: pdfFileName,
+          });
+        }
+      }
+    }
+
+    // 4. NẾU CÓ RESEND API (CHẠY RESEND HOẶC FALLBACK TỪ SMTP)
     if (resend) {
       try {
+        console.log(`[RESEND] Đang gửi qua Resend tới ${email}...`);
         const resendAttachments = pdfBuffer
           ? [
               {
@@ -130,7 +232,6 @@ export default async function handler(req: any, res: any) {
             ]
           : [];
 
-        // Hỗ trợ cấu hình RESEND_FROM nếu người dùng đã verify custom domain trên Resend
         const resendFrom =
           process.env.RESEND_FROM || "AI Business Check-up <onboarding@resend.dev>";
 
@@ -148,7 +249,7 @@ export default async function handler(req: any, res: any) {
           return res.status(400).json({
             status: "resend_error",
             isRealDelivery: false,
-            message: `Resend thông báo: ${resendResult.error.message}`,
+            message: `Cổng Resend phản hồi: ${resendResult.error.message}`,
             detail: resendResult.error,
             attachmentName: pdfFileName,
           });
@@ -158,7 +259,7 @@ export default async function handler(req: any, res: any) {
           status: "ok",
           isRealDelivery: true,
           provider: "resend",
-          message: `Báo cáo chiến lược cho doanh nghiệp "${businessName || "Doanh nghiệp"}" đã được gửi thành công kèm tệp PDF vào hộp thư ${email}!`,
+          message: `Báo cáo chiến lược cho doanh nghiệp "${businessName || "Doanh nghiệp"}" đã được gửi thành công vào hộp thư ${email}!`,
           messageId: resendResult.data?.id,
           deliveredTo: email,
           attachmentName: pdfFileName,
@@ -166,69 +267,19 @@ export default async function handler(req: any, res: any) {
           timestamp: new Date().toISOString(),
         });
       } catch (resendEx: any) {
-        console.error("Resend exception:", resendEx);
-        // Nếu Resend ném exception, thử tiếp qua SMTP nếu có
-        if (!hasRealSmtp) {
-          return res.status(500).json({
-            status: "error",
-            message: `Lỗi kết nối Resend: ${resendEx.message || String(resendEx)}`,
-          });
-        }
+        console.error("Resend Exception:", resendEx);
+        lastError = resendEx;
       }
     }
 
-    // 4. Gửi qua SMTP nếu có
-    if (hasRealSmtp) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: Number(process.env.SMTP_PORT) || 465,
-        secure:
-          process.env.SMTP_SECURE === "true" ||
-          !process.env.SMTP_PORT ||
-          process.env.SMTP_PORT === "465",
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS || process.env.SMTP_PASSWORD,
-        },
-      });
-
-      const mailOptions: any = {
-        from: `"AI Business Check-up" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-        to: email,
-        subject: emailSubject,
-        text: textContent || reportSummary || "Báo cáo chẩn đoán chiến lược doanh nghiệp",
-        html: emailHtml,
-        attachments: pdfBuffer
-          ? [
-              {
-                filename: pdfFileName,
-                content: pdfBuffer,
-                contentType: "application/pdf",
-              },
-            ]
-          : [],
-      };
-
-      const info = await transporter.sendMail(mailOptions);
-      return res.json({
-        status: "ok",
-        isRealDelivery: true,
-        provider: "smtp",
-        message: `Báo cáo chiến lược cho doanh nghiệp "${businessName || "Doanh nghiệp"}" đã được gửi thành công kèm tệp PDF vào hộp thư ${email}!`,
-        messageId: info.messageId,
-        deliveredTo: email,
-        attachmentName: pdfFileName,
-        attachmentSize: `${pdfFileSizeKb} KB`,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    return res.status(500).json({
+    return res.status(400).json({
       status: "error",
-      message: "Không thể hoàn thành gửi email qua các cổng đã cấu hình.",
+      message: lastError
+        ? `Lỗi khi phát thư: ${lastError.message || String(lastError)}`
+        : "Không thể gửi email qua các cổng đã cấu hình. Vui lòng kiểm tra lại thông tin cấu hình.",
     });
   } catch (error: any) {
-    console.error("Lỗi tổng quát khi gửi email:", error);
+    console.error("Lỗi tổng quát:", error);
     return res.status(500).json({
       status: "error",
       message: error.message || "Lỗi máy chủ khi xử lý gửi email",

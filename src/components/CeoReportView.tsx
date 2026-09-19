@@ -302,9 +302,9 @@ Hệ thống AI Business Health Check 2026`;
       console.error('Lỗi khi gọi API gửi mail:', err);
       setIsSendingEmail(false);
       setEmailDeliveryResult({
-        status: 'needs_smtp_config',
+        status: 'error',
         isRealDelivery: false,
-        message: 'Máy chủ chưa kết nối cổng phát thư SMTP ra Internet.',
+        message: err?.message ? `Lỗi kết nối: ${err.message}` : 'Máy chủ chưa kết nối được cổng phát thư ra Internet. Vui lòng thử lại.',
       });
     }
   };
