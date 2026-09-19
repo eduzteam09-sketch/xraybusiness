@@ -262,7 +262,22 @@ Hệ thống AI Business Health Check 2026`;
         }),
       });
 
-      const data = await response.json();
+      let data: any = null;
+      const textResponse = await response.text();
+      try {
+        data = JSON.parse(textResponse);
+      } catch (parseError) {
+        console.error('Không thể parse JSON từ máy chủ:', textResponse);
+        setIsSendingEmail(false);
+        setEmailDeliveryResult({
+          status: 'error',
+          isRealDelivery: false,
+          message: textResponse.includes('FUNCTION_INVOCATION_FAILED') || textResponse.includes('server error')
+            ? 'Máy chủ gửi email đang trong quá trình cập nhật. Vui lòng bấm thử lại.'
+            : (textResponse || 'Phản hồi không hợp lệ từ máy chủ.'),
+        });
+        return;
+      }
       setIsSendingEmail(false);
 
       if (data.status === 'ok' && data.isRealDelivery) {

@@ -84,33 +84,37 @@ export default async function handler(req: any, res: any) {
       .replace(/[^a-zA-Z0-9_]/g, "");
     const pdfFileName = `Bao_Cao_Chien_Luoc_CEO_${asciiBusinessName || "Doanh_Nghiep"}.pdf`;
 
-    // 1. Tạo buffer PDF (Vector hoặc fallback)
+    // 1. Tạo buffer PDF: Ưu tiên dùng trực tiếp PDF Base64 chất lượng cao từ trình duyệt của người dùng
     let pdfBuffer: Buffer | null = null;
-    try {
-      pdfBuffer = await generateExecutivePdfBuffer({
-        email,
-        receiverName,
-        businessName,
-        healthScore,
-        healthSummary: healthSummary || reportSummary,
-        threeKeyInsights,
-        ifOnlyOneThing,
-        ninetyDayPlan,
-        radarScores,
-        profile,
-        pdfFileName,
-      });
-    } catch (pdfErr) {
-      console.warn("Lỗi generateExecutivePdfBuffer:", pdfErr);
-      if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 500) {
-        try {
-          const base64Clean = pdfBase64.includes("base64,")
-            ? pdfBase64.split("base64,")[1]
-            : pdfBase64;
-          pdfBuffer = Buffer.from(base64Clean, "base64");
-        } catch (b64Err) {
-          console.warn("Lỗi parse client base64 pdf:", b64Err);
-        }
+    if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 200) {
+      try {
+        const base64Clean = pdfBase64.includes("base64,")
+          ? pdfBase64.split("base64,")[1]
+          : pdfBase64;
+        pdfBuffer = Buffer.from(base64Clean, "base64");
+        console.log(`[PDF] Đã nạp trực tiếp PDF Base64 từ client thành công, dung lượng: ${pdfBuffer.length} bytes`);
+      } catch (b64Err) {
+        console.warn("Lỗi parse client base64 pdf:", b64Err);
+      }
+    }
+
+    if (!pdfBuffer) {
+      try {
+        pdfBuffer = await generateExecutivePdfBuffer({
+          email,
+          receiverName,
+          businessName,
+          healthScore,
+          healthSummary: healthSummary || reportSummary,
+          threeKeyInsights,
+          ifOnlyOneThing,
+          ninetyDayPlan,
+          radarScores,
+          profile,
+          pdfFileName,
+        });
+      } catch (pdfErr) {
+        console.warn("Bỏ qua lỗi server PDF generation:", pdfErr);
       }
     }
 

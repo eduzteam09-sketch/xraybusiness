@@ -29,13 +29,27 @@ export function generateExecutivePdfBuffer(data: ReportEmailData): Promise<Buffe
 
       const { regular: regularFont, bold: boldFont } = getVietnameseFontPaths();
 
-      if (regularFont !== 'Helvetica') {
-        doc.registerFont('VNRegular', regularFont);
-        doc.registerFont('VNBold', boldFont);
-      } else {
-        doc.registerFont('VNRegular', 'Helvetica');
-        doc.registerFont('VNBold', 'Helvetica-Bold');
+      if (regularFont !== 'Helvetica' && fs.existsSync(regularFont)) {
+        try {
+          doc.registerFont('VNRegular', regularFont);
+          doc.registerFont('VNBold', boldFont);
+        } catch (e) {
+          console.warn('Cannot register custom font:', e);
+        }
       }
+
+      // Intercept doc.font to fallback safely to Helvetica if custom font is not registered
+      const origFont = doc.font.bind(doc);
+      (doc as any).font = (name: string, ...args: any[]) => {
+        try {
+          return origFont(name, ...args);
+        } catch {
+          if (name && name.toLowerCase().includes('bold')) {
+            return origFont('Helvetica-Bold', ...args);
+          }
+          return origFont('Helvetica', ...args);
+        }
+      };
 
       const buffers: Buffer[] = [];
       doc.on('data', (chunk) => buffers.push(chunk));
