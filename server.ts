@@ -83,6 +83,8 @@ async function startServer() {
         ninetyDayPlan,
         radarScores,
         profile,
+        topBottlenecks,
+        bottlenecks,
       } = req.body;
 
       if (!email || !email.includes("@")) {
@@ -125,6 +127,8 @@ async function startServer() {
           ninetyDayPlan,
           radarScores,
           profile,
+          topBottlenecks,
+          bottlenecks,
           pdfFileName,
         });
         console.log(`[PDF] Đã tạo PDF tiếng Việt có dấu thành công! Kích thước: ${pdfBuffer.length} bytes`);
@@ -289,6 +293,8 @@ async function startServer() {
         ninetyDayPlan,
         radarScores,
         profile,
+        topBottlenecks,
+        bottlenecks,
       } = req.body;
 
       const asciiBusinessName = (businessName || "Doanh_Nghiep")
@@ -312,6 +318,8 @@ async function startServer() {
         ninetyDayPlan,
         radarScores,
         profile,
+        topBottlenecks,
+        bottlenecks,
         pdfFileName,
       });
 

@@ -13,6 +13,7 @@ export interface ReportEmailData {
     action?: string;
     reason?: string;
     impact?: string;
+    leverageBottleneck?: string;
   };
   ninetyDayPlan?: Array<{
     timeline?: string;
@@ -21,20 +22,22 @@ export interface ReportEmailData {
     kpi?: string;
     tasks?: string[];
   }>;
-  radarScores?: {
-    finance?: number;
-    operations?: number;
-    marketing?: number;
-    team?: number;
-    advantage?: number;
-  };
+  radarScores?: any;
   profile?: {
+    ceoName?: string;
     industry?: string;
     currentRevenue?: string;
     teamSize?: string;
     mainProducts?: string;
     painPoint?: string;
   };
+  topBottlenecks?: Array<{
+    title?: string;
+    zone?: string;
+    recommendation?: string;
+    severity?: string;
+  }>;
+  bottlenecks?: any[];
   pdfFileName?: string;
   pdfFileSizeKb?: number;
 }

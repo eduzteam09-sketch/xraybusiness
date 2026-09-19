@@ -41,8 +41,13 @@ export const CeoReportView: React.FC<CeoReportViewProps> = ({ report, onBackToOv
     ifOnlyOneThing,
     ninetyDayPlan,
     radarScores,
+    bottlenecks,
     createdAt,
   } = report;
+
+  const topBottlenecks = Array.isArray(bottlenecks) && bottlenecks.length > 0
+    ? bottlenecks.slice(0, 3)
+    : [];
 
   // Email Modal State
   const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
@@ -62,6 +67,8 @@ export const CeoReportView: React.FC<CeoReportViewProps> = ({ report, onBackToOv
   // PDF Generation State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [pdfSuccessMessage, setPdfSuccessMessage] = useState<string | null>(null);
+  const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string>('Bao_Cao_Chien_Luoc_CEO.pdf');
 
   const formattedDate = new Date(createdAt).toLocaleDateString('vi-VN', {
     day: '2-digit',
@@ -125,8 +132,51 @@ Hệ thống AI Business Health Check 2026`;
         .replace(/\s+/g, '_')
         .replace(/[^a-zA-Z0-9_]/g, '');
       const fileName = `Bao_Cao_Chien_Luoc_CEO_${asciiBusinessName || 'Doanh_Nghiep'}.pdf`;
+      setPdfFileName(fileName);
 
-      // Tạo PDF vector độ nét cao trực tiếp trên trình duyệt bằng jsPDF hỗ trợ 100% tiếng Việt có dấu
+      // Ưu tiên 1: Tạo và tải trực tiếp PDF vector độ nét cao từ máy chủ (Chuẩn font Roboto tiếng Việt)
+      try {
+        const resp = await fetch('/api/generate-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            receiverName: receiverName || profile.ceoName || 'CEO',
+            businessName: profile.businessName,
+            healthScore,
+            healthSummary,
+            threeKeyInsights,
+            ifOnlyOneThing,
+            ninetyDayPlan,
+            radarScores,
+            profile,
+            topBottlenecks,
+            bottlenecks,
+          }),
+        });
+
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          setPdfDownloadUrl(blobUrl);
+
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = fileName;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          setIsGeneratingPdf(false);
+          setPdfSuccessMessage(`Đã tải xuống báo cáo PDF: ${fileName}`);
+          setTimeout(() => setPdfSuccessMessage(null), 10000);
+          return blobUrl;
+        }
+      } catch (serverErr) {
+        console.warn('Máy chủ tạo PDF không phản hồi, tự động chuyển sang bộ tạo vector nội bộ:', serverErr);
+      }
+
+      // Ưu tiên 2: Tự động tạo vector nội bộ qua jsPDF nếu không gọi được máy chủ
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       setupVietnameseFont(doc);
 
@@ -209,16 +259,16 @@ Hệ thống AI Business Health Check 2026`;
 
       // Chuẩn hóa danh sách đủ 10 trục năng lực
       const defaultAxes = [
-        { subject: 'USP khác biệt', label: '1. USP khác biệt vượt trội', score: 4.0, benchmark: 3.5 },
-        { subject: 'Nhóm khách lợi nhuận', label: '2. Nhóm khách tạo 80% lợi nhuận', score: 3.5, benchmark: 3.2 },
-        { subject: 'Thấu hiểu Insight', label: '3. Thấu hiểu nỗi đau khách hàng', score: 4.0, benchmark: 3.0 },
-        { subject: 'Dễ dàng tìm thấy', label: '4. Hiện diện số & Dễ tìm thấy', score: 2.0, benchmark: 3.4 },
-        { subject: 'Internet -> Doanh thu', label: '5. Phễu Online ra Doanh thu', score: 2.0, benchmark: 3.5 },
-        { subject: 'Cơ chế mua lại', label: '6. Tự động nhắc nhở mua lại', score: 2.0, benchmark: 3.2 },
-        { subject: 'Cross-sell / Upsell', label: '7. Chiến lược Combo & Bán thêm', score: 2.5, benchmark: 3.0 },
-        { subject: 'Dữ liệu khách hàng', label: '8. Thu thập & Khai thác dữ liệu', score: 1.5, benchmark: 3.2 },
-        { subject: 'Tăng trưởng không tăng NS', label: '9. Tăng trưởng không tăng NS', score: 3.0, benchmark: 2.8 },
-        { subject: 'Dễ dàng nhân bản', label: '10. Khả năng đóng gói & Nhân bản', score: 3.0, benchmark: 3.0 },
+        { subject: 'USP khác biệt', label: '1. USP khác biệt vượt trội', score: 4.0, benchmark: 3.5, isLeak: false },
+        { subject: 'Nhóm khách lợi nhuận', label: '2. Nhóm khách tạo 80% lợi nhuận', score: 3.5, benchmark: 3.2, isLeak: false },
+        { subject: 'Thấu hiểu Insight', label: '3. Thấu hiểu nỗi đau khách hàng', score: 4.0, benchmark: 3.0, isLeak: false },
+        { subject: 'Dễ dàng tìm thấy', label: '4. Hiện diện số & Dễ tìm thấy', score: 2.0, benchmark: 3.4, isLeak: true },
+        { subject: 'Internet -> Doanh thu', label: '5. Phễu Online ra Doanh thu', score: 2.0, benchmark: 3.5, isLeak: true },
+        { subject: 'Cơ chế mua lại', label: '6. Tự động nhắc nhở mua lại', score: 2.0, benchmark: 3.2, isLeak: true },
+        { subject: 'Cross-sell / Upsell', label: '7. Chiến lược Combo & Bán thêm', score: 2.5, benchmark: 3.0, isLeak: false },
+        { subject: 'Dữ liệu khách hàng', label: '8. Thu thập & Khai thác dữ liệu', score: 1.5, benchmark: 3.2, isLeak: true },
+        { subject: 'Tăng trưởng không tăng NS', label: '9. Tăng trưởng không tăng NS', score: 3.0, benchmark: 2.8, isLeak: false },
+        { subject: 'Dễ dàng nhân bản', label: '10. Khả năng đóng gói & Nhân bản', score: 3.0, benchmark: 3.0, isLeak: false },
       ];
 
       const axesList = Array.isArray(radarScores) && radarScores.length > 0
@@ -240,7 +290,9 @@ Hệ thống AI Business Health Check 2026`;
       // Đảm bảo đủ 10 trục
       while (axesList.length < 10) {
         const nextIdx = axesList.length;
-        const fallback = defaultAxes[nextIdx] || { label: `${nextIdx + 1}. Năng lực bổ trợ`, score: 3.0, benchmark: 3.0, isLeak: false };
+        const fallback = defaultAxes[nextIdx]
+          ? { ...defaultAxes[nextIdx] }
+          : { label: `${nextIdx + 1}. Năng lực bổ trợ`, score: 3.0, benchmark: 3.0, isLeak: false };
         axesList.push(fallback);
       }
 
@@ -600,17 +652,70 @@ Hệ thống AI Business Health Check 2026`;
         { align: 'center' }
       );
 
-      // TỰ ĐỘNG TẢI TRỰC TIẾP FILE VỀ TRÌNH DUYỆT (KHÔNG MỞ CỬA SỔ POPUP/PRINT)
-      doc.save(fileName);
+      // TỰ ĐỘNG TẢI TRỰC TIẾP FILE VỀ TRÌNH DUYỆT (HỖ TRỢ CẢ SANDBOX IFRAME)
+      try {
+        const pdfBlob = doc.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        setPdfDownloadUrl(blobUrl);
+
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (saveErr) {
+        console.warn('Lỗi khi tải bằng Blob URL, thử doc.save trực tiếp:', saveErr);
+        doc.save(fileName);
+      }
 
       setIsGeneratingPdf(false);
       setPdfSuccessMessage(`Đã tự động tải xuống báo cáo: ${fileName}`);
-      setTimeout(() => setPdfSuccessMessage(null), 5000);
+      setTimeout(() => setPdfSuccessMessage(null), 10000);
 
       return doc.output('datauristring');
-    } catch (err) {
-      console.warn('Lỗi khi xuất PDF:', err);
+    } catch (err: any) {
+      console.error('Lỗi khi xuất PDF:', err);
       setIsGeneratingPdf(false);
+
+      // Fallback gọi máy chủ tải trực tiếp file nếu có sự cố trên trình duyệt
+      try {
+        const resp = await fetch('/api/generate-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            receiverName: receiverName || profile.ceoName || 'CEO',
+            businessName: profile.businessName,
+            healthScore,
+            healthSummary,
+            threeKeyInsights,
+            ifOnlyOneThing,
+            ninetyDayPlan,
+            radarScores,
+            profile,
+            topBottlenecks,
+            bottlenecks,
+          }),
+        });
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Bao_Cao_Chien_Luoc_CEO_${(profile.businessName || 'Doanh_Nghiep').replace(/\s+/g, '_')}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+          setPdfSuccessMessage('Đã tải xuống báo cáo PDF từ máy chủ thành công!');
+          setTimeout(() => setPdfSuccessMessage(null), 5000);
+          return null;
+        }
+      } catch (serverErr) {
+        console.error('Fallback server PDF generation cũng thất bại:', serverErr);
+      }
+
       return null;
     }
   };
@@ -644,6 +749,8 @@ Hệ thống AI Business Health Check 2026`;
           ninetyDayPlan: ninetyDayPlan,
           radarScores: radarScores,
           profile: profile,
+          topBottlenecks: topBottlenecks,
+          bottlenecks: bottlenecks,
           subject: emailSubject,
           reportSummary: healthSummary,
           textContent: emailBody,
@@ -687,7 +794,7 @@ Hệ thống AI Business Health Check 2026`;
           attachmentName: data.attachmentName,
         });
       } else if (data.status === 'needs_smtp_config') {
-        // Chưa cấu hình tài khoản gửi thư: Thông báo trung thực và hướng dẫn cách nhận thư ngay
+        // Chưa cấu hình tài khoản gửi thư: Thông báo rõ ràng và tự động kích hoạt tải file PDF về máy
         setEmailDeliveryResult({
           status: 'needs_smtp_config',
           isRealDelivery: false,
@@ -695,6 +802,10 @@ Hệ thống AI Business Health Check 2026`;
           attachmentName: data.attachmentName,
           attachmentSize: data.attachmentSize,
         });
+        // Tự động tải ngay file PDF về máy cho người dùng
+        setTimeout(() => {
+          handleDownloadPdf();
+        }, 100);
       } else {
         setEmailDeliveryResult({
           status: 'error',
@@ -785,7 +896,7 @@ Hệ thống AI Business Health Check 2026`;
 
       {/* Thông báo tải PDF thành công */}
       {pdfSuccessMessage && (
-        <div className="print:hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-900 font-semibold flex items-center justify-between gap-2.5 animate-in fade-in shadow-xs">
+        <div className="print:hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-900 font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in shadow-xs">
           <div className="flex items-center gap-2.5">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
@@ -793,12 +904,26 @@ Hệ thống AI Business Health Check 2026`;
               <div className="text-[11px] text-emerald-800 mt-0.5">{pdfSuccessMessage}</div>
             </div>
           </div>
-          <button
-            onClick={() => setPdfSuccessMessage(null)}
-            className="text-emerald-700 hover:text-emerald-900 p-1"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {pdfDownloadUrl && (
+              <a
+                href={pdfDownloadUrl}
+                download={pdfFileName}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Mở / Tải lại ngay</span>
+              </a>
+            )}
+            <button
+              onClick={() => setPdfSuccessMessage(null)}
+              className="text-emerald-700 hover:text-emerald-900 p-1.5 rounded-lg hover:bg-emerald-100/60 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 

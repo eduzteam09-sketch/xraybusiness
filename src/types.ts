@@ -133,6 +133,7 @@ export interface DiagnosisReport {
     action: string;
     reason: string;
     leverageBottleneck: string;
+    impact?: string;
   };
   positioningSummary: {
     marketLocation: string;
