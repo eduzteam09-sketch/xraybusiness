@@ -1,222 +1,256 @@
-import fs from 'fs';
-import path from 'path';
-import PDFDocument from 'pdfkit';
+import { jsPDF } from 'jspdf';
 import { ReportEmailData } from './emailTemplate';
 
-// Xác định đường dẫn phông chữ hỗ trợ 100% tiếng Việt có dấu Unicode
-function getVietnameseFontPaths() {
-  const systemRegular = '/usr/share/fonts/truetype/freefont/FreeSans.ttf';
-  const systemBold = '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf';
-
-  const regular = fs.existsSync(systemRegular)
-    ? systemRegular
-    : 'Helvetica';
-
-  const bold = fs.existsSync(systemBold)
-    ? systemBold
-    : 'Helvetica-Bold';
-
-  return { regular, bold };
+// Hàm làm sạch chuỗi Unicode sang ký tự tiêu chuẩn để in trong PDF tiêu chuẩn không lỗi phông
+function sanitizePdfText(str: string | undefined): string {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .trim();
 }
 
-export function generateExecutivePdfBuffer(data: ReportEmailData): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        size: 'A4',
-        margins: { top: 36, bottom: 36, left: 36, right: 36 },
-      });
+export async function generateExecutivePdfBuffer(data: ReportEmailData): Promise<Buffer> {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = 210;
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2; // 186mm
 
-      const { regular: regularFont, bold: boldFont } = getVietnameseFontPaths();
+  const businessName = sanitizePdfText(data.businessName) || 'DOANH NGHIEP';
+  const ceoName = sanitizePdfText(data.receiverName) || 'CEO / LANH DAO';
+  const industry = sanitizePdfText(data.profile?.industry) || 'Thuong mai & Dich vu';
+  const score = data.healthScore !== undefined ? data.healthScore : 72;
 
-      if (regularFont !== 'Helvetica' && fs.existsSync(regularFont)) {
-        try {
-          doc.registerFont('VNRegular', regularFont);
-          doc.registerFont('VNBold', boldFont);
-        } catch (e) {
-          console.warn('Cannot register custom font:', e);
-        }
-      }
+  // 1. HEADER BANNER (Navy sẫm)
+  doc.setFillColor(15, 23, 42); // #0f172a
+  doc.rect(margin, 12, contentWidth, 24, 'F');
 
-      // Intercept doc.font to fallback safely to Helvetica if custom font is not registered
-      const origFont = doc.font.bind(doc);
-      (doc as any).font = (name: string, ...args: any[]) => {
-        try {
-          return origFont(name, ...args);
-        } catch {
-          if (name && name.toLowerCase().includes('bold')) {
-            return origFont('Helvetica-Bold', ...args);
-          }
-          return origFont('Helvetica', ...args);
-        }
-      };
+  doc.setTextColor(147, 197, 253); // #93c5fd
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AI BUSINESS HEALTH CHECK 2026 - EXECUTIVE STRATEGY REPORT', margin + 5, 18);
 
-      const buffers: Buffer[] = [];
-      doc.on('data', (chunk) => buffers.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(buffers)));
-      doc.on('error', (err) => reject(err));
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`BAN DO CHIEN LUOC & DINH VI: ${businessName.toUpperCase()}`, margin + 5, 26);
 
-      const businessName = data.businessName || 'Doanh Nghiệp';
-      const ceoName = data.receiverName || 'CEO';
-      const industry = data.profile?.industry || 'Thương mại / Dịch vụ';
-      const score = data.healthScore !== undefined ? data.healthScore : 74;
+  doc.setTextColor(203, 213, 225); // #cbd5e1
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nguoi nhan: ${ceoName} | Nganh: ${industry} | Thoi diem: ${new Date().toLocaleDateString('vi-VN')}`, margin + 5, 32);
 
-      // 1. TOP HEADER BANNER (Navy hiện đại)
-      doc.rect(36, 36, 523, 72).fill('#0f172a');
-      doc.fillColor('#93c5fd').fontSize(8).font('VNBold')
-        .text('AI BUSINESS HEALTH CHECK 2026 • EXECUTIVE STRATEGY REPORT', 48, 46, { characterSpacing: 1 });
-      doc.fillColor('#ffffff').fontSize(15).font('VNBold')
-        .text('BẢN ĐỒ CHIẾN LƯỢC & TƯ VẤN ĐIỀU HÀNH CEO', 48, 60);
-      doc.fillColor('#cbd5e1').fontSize(8.5).font('VNRegular')
-        .text(`Doanh nghiệp: ${businessName} | Lãnh đạo: ${ceoName} | Ngành: ${industry}`, 48, 83, { width: 500 });
+  // 2. HEALTH SCORE BOX
+  let currentY = 40;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(margin, currentY, contentWidth, 22, 'FD');
 
-      // 2. HEALTH SCORE & SUMMARY BOX
-      let currentY = 118;
-      doc.rect(36, currentY, 523, 68).fillAndStroke('#f8fafc', '#cbd5e1');
+  // Score badge
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('CHI SO SUC KHOE', margin + 5, currentY + 6);
 
-      // Score Column
-      doc.fillColor('#64748b').fontSize(7.5).font('VNBold').text('CHỈ SỐ SỨC KHỎE', 48, currentY + 12);
-      doc.fillColor(score >= 80 ? '#16a34a' : score >= 60 ? '#1d4ed8' : '#ea580c').fontSize(26).font('VNBold')
-        .text(`${score}`, 48, currentY + 24);
-      doc.fillColor('#64748b').fontSize(10).font('VNRegular').text('/100', 88, currentY + 36);
+  const scoreColor = score >= 80 ? [22, 163, 74] : score >= 60 ? [29, 78, 216] : [234, 88, 12];
+  doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${score}`, margin + 5, currentY + 16);
 
-      const scoreGrade = score >= 80 ? 'HẠNG A' : score >= 60 ? 'HẠNG B' : 'HẠNG C';
-      doc.fillColor(score >= 80 ? '#16a34a' : score >= 60 ? '#1d4ed8' : '#ea580c').fontSize(7.5).font('VNBold')
-        .text(scoreGrade, 48, currentY + 52);
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text('/100', margin + 20, currentY + 14);
 
-      // Summary Column
-      doc.rect(125, currentY + 10, 1, 48).fill('#cbd5e1');
-      doc.fillColor('#1e40af').fontSize(8).font('VNBold')
-        .text('✦ NHẬN ĐỊNH TỪ CHUYÊN GIA CHIẾN LƯỢC AI', 138, currentY + 12);
-      const summaryText = data.healthSummary || 'Doanh nghiệp sở hữu nền tảng sản phẩm tốt nhưng dòng tiền đang bị rò rỉ ở khâu giữ chân khách hàng cũ và tự động hóa vận hành.';
-      doc.fillColor('#1e293b').fontSize(8.5).font('VNRegular')
-        .text(`“${summaryText}”`, 138, currentY + 26, { width: 405, lineGap: 3 });
+  // Divider
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin + 36, currentY + 3, margin + 36, currentY + 19);
 
-      // 3. 5 PILLARS ASSESSMENT
-      currentY = 196;
-      doc.fillColor('#0f172a').fontSize(9.5).font('VNBold').text('1. ĐÁNH GIÁ 5 TRỤ CỘT NĂNG LỰC DOANH NGHIỆP', 36, currentY);
+  // Summary quote
+  doc.setTextColor(30, 64, 175);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('NHAN DINH CHIEN LUOC TONG QUAN:', margin + 40, currentY + 6);
 
-      currentY += 15;
-      const pillars = [
-        { label: 'Tài chính & Dòng tiền (Cashflow)', score: data.radarScores?.finance || 72 },
-        { label: 'Vận hành & Hệ thống (Operations)', score: data.radarScores?.operations || 65 },
-        { label: 'Tiếp thị & Khách hàng (Marketing)', score: data.radarScores?.marketing || 80 },
-        { label: 'Đội ngũ & Con người (Team & HR)', score: data.radarScores?.team || 68 },
-        { label: 'Lợi thế cạnh tranh & Sản phẩm (Moat)', score: data.radarScores?.advantage || 85 },
-      ];
+  const summary = sanitizePdfText(data.healthSummary) || 'Doanh nghiep co nen tang san pham tot nhung can tap trung toi uu hoa quy trinh giu chan khach hang va tu dong hoa van hanh.';
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  const splitSummary = doc.splitTextToSize(`"${summary}"`, contentWidth - 45);
+  doc.text(splitSummary, margin + 40, currentY + 11);
 
-      doc.rect(36, currentY, 523, 76).fillAndStroke('#ffffff', '#e2e8f0');
-      let barY = currentY + 8;
-      pillars.forEach((p) => {
-        doc.fillColor('#334155').fontSize(8).font('VNRegular').text(p.label, 48, barY);
-        doc.fillColor('#1d4ed8').fontSize(8).font('VNBold').text(`${p.score}/100`, 245, barY, { width: 45, align: 'right' });
+  // 3. 5 PILLARS ASSESSMENT
+  currentY = 66;
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('1. DANH GIA 5 TRU COT NANG LUC DOANH NGHIEP (SCORECARD)', margin, currentY);
 
-        // Bar background
-        doc.rect(300, barY + 1, 240, 6).fill('#e2e8f0');
-        // Bar progress
-        const barWidth = (Math.min(100, Math.max(0, p.score)) / 100) * 240;
-        doc.rect(300, barY + 1, barWidth, 6).fill('#2563eb');
+  currentY += 4;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(margin, currentY, contentWidth, 34, 'FD');
 
-        barY += 13;
-      });
+  const pillars = [
+    { label: 'Tai chinh & Dong tien (Cashflow & Unit Economics)', score: data.radarScores?.finance || 72 },
+    { label: 'Van hanh & He thong (Operations & Process Automation)', score: data.radarScores?.operations || 65 },
+    { label: 'Tiep thi & Khach hang (Marketing & Retention Engines)', score: data.radarScores?.marketing || 80 },
+    { label: 'Doi ngu & Con nguoi (Team Alignment & Culture)', score: data.radarScores?.team || 68 },
+    { label: 'Loi the canh tranh & San pham (Product Moat & IP)', score: data.radarScores?.advantage || 85 },
+  ];
 
-      // 4. HIGHEST LEVERAGE ACTION (IF ONLY ONE THING)
-      currentY = 298;
-      doc.fillColor('#0f172a').fontSize(9.5).font('VNBold')
-        .text('2. HÀNH ĐỘNG ĐÒN BẨY SỐ 1 (Nếu chỉ làm 1 việc trong 30 ngày tới)', 36, currentY);
+  let barY = currentY + 5;
+  pillars.forEach((p) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text(p.label, margin + 4, barY);
 
-      currentY += 15;
-      doc.rect(36, currentY, 523, 72).fillAndStroke('#fefce8', '#fde047');
-      doc.fillColor('#854d0e').fontSize(7.5).font('VNBold').text('HÀNH ĐỘNG TRỌNG TÂM 30 NGÀY:', 48, currentY + 10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(29, 78, 216);
+    doc.text(`${p.score}/100`, margin + 115, barY);
 
-      const actionText = data.ifOnlyOneThing?.action || 'Kích hoạt chiến dịch gọi điện/nhắn tin chăm sóc 100 khách hàng cũ thân thiết nhất.';
-      doc.fillColor('#713f12').fontSize(9.5).font('VNBold').text(actionText, 48, currentY + 22, { width: 500 });
+    // Bar background
+    doc.setFillColor(226, 232, 240);
+    doc.rect(margin + 130, barY - 2.5, 48, 3, 'F');
 
-      const reasonText = data.ifOnlyOneThing?.reason || 'Chi phí giữ chân khách cũ chỉ bằng 1/5 chi phí tìm khách mới, tạo dòng tiền nóng ngay lập tức.';
-      doc.fillColor('#854d0e').fontSize(8).font('VNRegular').text(`Lý do: ${reasonText}`, 48, currentY + 38, { width: 500 });
+    // Bar progress
+    const barWidth = (Math.min(100, Math.max(0, p.score)) / 100) * 48;
+    doc.setFillColor(37, 99, 235);
+    doc.rect(margin + 130, barY - 2.5, barWidth, 3, 'F');
 
-      const impactText = data.ifOnlyOneThing?.impact || 'Dự kiến tăng ngay 15% - 25% doanh thu trong 30 ngày mà không tốn thêm ngân sách quảng cáo.';
-      doc.fillColor('#15803d').fontSize(8).font('VNBold').text(`Tác động: ${impactText}`, 48, currentY + 53, { width: 500 });
-
-      // 5. THREE KEY INSIGHTS
-      currentY = 396;
-      doc.fillColor('#0f172a').fontSize(9.5).font('VNBold')
-        .text('3. TAM GIÁC NHẬN ĐỊNH CHIẾN LƯỢC TRỌNG YẾU', 36, currentY);
-
-      currentY += 15;
-      // Strength
-      doc.rect(36, currentY, 523, 27).fillAndStroke('#f0fdf4', '#bbf7d0');
-      doc.fillColor('#166534').fontSize(7.5).font('VNBold').text('[+] ĐIỂM MẠNH:', 48, currentY + 8);
-      const strengthText = data.threeKeyInsights?.greatestStrength || 'Sản phẩm có lợi thế cạnh tranh tự nhiên và tỷ lệ khách hàng hài lòng cao.';
-      doc.fillColor('#14532d').fontSize(8).font('VNRegular')
-        .text(strengthText, 130, currentY + 8, { width: 415, lineGap: 2 });
-
-      // Bottleneck
-      currentY += 31;
-      doc.rect(36, currentY, 523, 27).fillAndStroke('#fef2f2', '#fecaca');
-      doc.fillColor('#991b1b').fontSize(7.5).font('VNBold').text('[-] ĐIỂM NGHẼN:', 48, currentY + 8);
-      const bottleneckText = data.threeKeyInsights?.biggestBottleneck || 'Phụ thuộc vào khách mới, tỷ lệ quay lại mua hàng chưa được khai thác triệt để.';
-      doc.fillColor('#7f1d1d').fontSize(8).font('VNRegular')
-        .text(bottleneckText, 130, currentY + 8, { width: 415, lineGap: 2 });
-
-      // Opportunity
-      currentY += 31;
-      doc.rect(36, currentY, 523, 27).fillAndStroke('#eff6ff', '#bfdbfe');
-      doc.fillColor('#1e40af').fontSize(7.5).font('VNBold').text('[*] CƠ HỘI VÀNG:', 48, currentY + 8);
-      const oppText = data.threeKeyInsights?.mostPromisingOpportunity || 'Xây dựng phễu chăm sóc tự động và gói sản phẩm định kỳ (combo/membership).';
-      doc.fillColor('#1e3a8a').fontSize(8).font('VNRegular')
-        .text(oppText, 130, currentY + 8, { width: 415, lineGap: 2 });
-
-      // 6. 90-DAY ACTION PLAN
-      currentY = 510;
-      doc.fillColor('#0f172a').fontSize(9.5).font('VNBold')
-        .text('4. LỘ TRÌNH 90 NGÀY HÀNH ĐỘNG CỦA CEO', 36, currentY);
-
-      currentY += 15;
-      const plan = data.ninetyDayPlan && data.ninetyDayPlan.length > 0 ? data.ninetyDayPlan : [
-        {
-          timeline: 'Tuần 1 - 2',
-          title: 'DẬP TẮT ĐÁM CHÁY & CẮT RÒ RỈ DÒNG TIỀN',
-          objective: 'Kiểm toán toàn bộ chi phí thừa và thu hồi công nợ quá hạn.',
-          kpi: 'Giảm 10% chi phí vận hành không thiết yếu.',
-        },
-        {
-          timeline: 'Tuần 3 - 6',
-          title: 'TỐI ƯU HÓA PHỄU BÁN HÀNG & TĂNG TỶ LỆ QUAY LẠI',
-          objective: 'Xây dựng quy trình chăm sóc khách hàng sau mua và kịch bản upsell.',
-          kpi: 'Tỷ lệ khách hàng mua lại lần 2 tăng tối thiểu 20%.',
-        },
-        {
-          timeline: 'Tuần 7 - 12',
-          title: 'ĐÓNG GÓI QUY TRÌNH & BÀN GIAO VẬN HÀNH',
-          objective: 'Chuẩn hóa quy trình làm việc (SOP) để CEO giảm 40% thời gian can thiệp trực tiếp.',
-          kpi: 'Đội ngũ tự vận hành 80% công việc thường nhật.',
-        },
-      ];
-
-      plan.forEach((item, idx) => {
-        doc.rect(36, currentY, 523, 44).fillAndStroke('#ffffff', '#e2e8f0');
-        doc.fillColor('#2563eb').fontSize(7).font('VNBold').text(item.timeline || `GIAI ĐOẠN 0${idx + 1}`, 48, currentY + 6);
-        doc.fillColor('#0f172a').fontSize(8).font('VNBold').text(item.title || '', 115, currentY + 6);
-        doc.fillColor('#475569').fontSize(7.5).font('VNRegular')
-          .text(`Mục tiêu: ${item.objective || ''}`, 48, currentY + 18, { width: 495 });
-        doc.fillColor('#15803d').fontSize(7.5).font('VNBold')
-          .text(`KPI: ${item.kpi || ''}`, 48, currentY + 29, { width: 495 });
-
-        currentY += 47;
-      });
-
-      // 7. FOOTER
-      doc.rect(36, 755, 523, 30).fill('#f1f5f9');
-      doc.fillColor('#64748b').fontSize(7).font('VNRegular')
-        .text('AI BUSINESS HEALTH CHECK 2026 • HỆ THỐNG CHẨN ĐOÁN CHIẾN LƯỢC DOANH NGHIỆP VIỆT NAM', 48, 763, { align: 'center', width: 500 });
-      doc.fillColor('#94a3b8').fontSize(6.5).font('VNRegular')
-        .text(`Xác thực ký điện tử: ${new Date().toLocaleString('vi-VN')} • Mã báo cáo: #AIBHC-${Date.now().toString().slice(-6)}`, 48, 772, { align: 'center', width: 500 });
-
-      doc.end();
-    } catch (error) {
-      reject(error);
-    }
+    barY += 5.8;
   });
-}
 
+  // 4. HIGHEST LEVERAGE ACTION (IF ONLY ONE THING)
+  currentY = 108;
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('2. HANH DONG DON BAY QUYET DINH TRONG 30 NGAY (IF ONLY ONE THING)', margin, currentY);
+
+  currentY += 4;
+  doc.setFillColor(254, 243, 199); // #fef3c7 amber-100
+  doc.setDrawColor(245, 158, 11);
+  doc.rect(margin, currentY, contentWidth, 18, 'FD');
+
+  const ifOneThing = sanitizePdfText(data.ifOnlyOneThing) || 'Khai thac toi da gia tri vong doi khach hang cu thong qua chuoi cham soc tu dong de tang bien loi nhuan gop ngay lap tuc.';
+  doc.setTextColor(146, 64, 14);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DON BAY CHIEN LUOC:', margin + 4, currentY + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(69, 26, 3);
+  const splitOneThing = doc.splitTextToSize(ifOneThing, contentWidth - 10);
+  doc.text(splitOneThing, margin + 4, currentY + 10);
+
+  // 5. THREE KEY INSIGHTS
+  currentY = 134;
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('3. TAM GIAC NHAN DINH CHIEN LUOC (STRATEGIC TRIANGLE)', margin, currentY);
+
+  currentY += 4;
+  const insights = [
+    {
+      title: 'DONG TIEN & HIEN TRANG',
+      text: sanitizePdfText(data.threeKeyInsights?.currentState) || 'Nguon thu on dinh nhung chi phi duy tri bo may can duoc tinh gon bang cong nghe.',
+      bg: [239, 246, 255],
+      border: [191, 219, 254],
+      titleColor: [30, 64, 175],
+    },
+    {
+      title: 'DIEM NGHEN COT LOI',
+      text: sanitizePdfText(data.threeKeyInsights?.biggestBottleneck) || 'Quy trinh ban hang phu thuoc nhieu vao con nguoi, thieu he thong ghi nhan tu dong.',
+      bg: [254, 242, 242],
+      border: [254, 202, 202],
+      titleColor: [153, 27, 27],
+    },
+    {
+      title: 'CO HOI BUT PHA',
+      text: sanitizePdfText(data.threeKeyInsights?.goldenOpportunity) || 'Ung dung AI vao tu van va cham soc khach hang giup giam 40% thoi gian xu ly don hang.',
+      bg: [240, 253, 244],
+      border: [187, 247, 208],
+      titleColor: [22, 101, 52],
+    },
+  ];
+
+  insights.forEach((ins) => {
+    doc.setFillColor(ins.bg[0], ins.bg[1], ins.bg[2]);
+    doc.setDrawColor(ins.border[0], ins.border[1], ins.border[2]);
+    doc.rect(margin, currentY, contentWidth, 15, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(ins.titleColor[0], ins.titleColor[1], ins.titleColor[2]);
+    doc.text(ins.title, margin + 4, currentY + 4.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+    const splitIns = doc.splitTextToSize(ins.text, contentWidth - 8);
+    doc.text(splitIns, margin + 4, currentY + 9);
+
+    currentY += 17;
+  });
+
+  // 6. 90-DAY ACTION PLAN
+  currentY += 2;
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('4. LO TRINH HANH DONG 90 NGAY CUA CEO (90-DAY EXECUTION ROADMAP)', margin, currentY);
+
+  currentY += 4;
+  const phases = [
+    {
+      label: 'GIAI DOAN 1 (NGAY 1 - 30): BIT LO RO RI',
+      action: sanitizePdfText(data.ninetyDayPlan?.phase1) || 'Thanh loc chi phi thua, toi uu conversion rate phan dau pheu, ra soat cong no.',
+    },
+    {
+      label: 'GIAI DOAN 2 (NGAY 31 - 60): CHUAN HOA HE THONG',
+      action: sanitizePdfText(data.ninetyDayPlan?.phase2) || 'Dong goi SOP van hanh, tich hop cong cu AI ho tro CSKH, xay dung KPI minh bach.',
+    },
+    {
+      label: 'GIAI DOAN 3 (NGAY 61 - 90): TANG TRUONG & TANG TOC',
+      action: sanitizePdfText(data.ninetyDayPlan?.phase3) || 'Mo rong kenh tiep can moi, ung dung don bay tai chinh an toan va dao tao ke thua.',
+    },
+  ];
+
+  phases.forEach((phase) => {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(margin, currentY, contentWidth, 14, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(phase.label, margin + 4, currentY + 4.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    const splitPhase = doc.splitTextToSize(phase.action, contentWidth - 8);
+    doc.text(splitPhase, margin + 4, currentY + 9);
+
+    currentY += 16;
+  });
+
+  // FOOTER
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'Bao cao chien luoc doc quyen danh cho CEO duoc tao boi AI Business Health Check Engine 2026. Bao mat tuyet doi.',
+    pageWidth / 2,
+    287,
+    { align: 'center' }
+  );
+
+  return Buffer.from(doc.output('arraybuffer'));
+}

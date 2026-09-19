@@ -142,8 +142,10 @@ export default async function handler(req: any, res: any) {
     if (hasRealSmtp) {
       try {
         console.log(`[SMTP] Đang gửi qua SMTP (${cleanSmtpUser}) tới ${email}...`);
+        const configuredHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
         const isGmail =
-          (process.env.SMTP_HOST || "").toLowerCase().includes("gmail") ||
+          configuredHost.toLowerCase().includes("gmail") ||
+          configuredHost.toLowerCase().includes("google") ||
           cleanSmtpUser.toLowerCase().includes("@gmail.com");
 
         const transporter = isGmail
@@ -153,9 +155,12 @@ export default async function handler(req: any, res: any) {
                 user: cleanSmtpUser,
                 pass: cleanSmtpPass,
               },
+              tls: {
+                rejectUnauthorized: false,
+              },
             })
           : nodemailer.createTransport({
-              host: process.env.SMTP_HOST || "smtp.gmail.com",
+              host: configuredHost,
               port: Number(process.env.SMTP_PORT) || 465,
               secure:
                 process.env.SMTP_SECURE === "true" ||
@@ -164,6 +169,9 @@ export default async function handler(req: any, res: any) {
               auth: {
                 user: cleanSmtpUser,
                 pass: cleanSmtpPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
               },
             });
 
