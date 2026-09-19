@@ -223,7 +223,7 @@ Hệ thống AI Business Health Check 2026`;
     }
   };
 
-  // 2. HÀM GỬI EMAIL VÀ TẢI FILE BÁO CÁO (MINH BẠCH, TRUNG THỰC 100%)
+  // 2. HÀM GỬI EMAIL BÁO CÁO (CHỈ GỬI MAIL, KHÔNG BẬT CỬA SỔ TẢI FILE HOẶC IN ẤN)
   const handleSendEmailAuto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput.trim() || !emailInput.includes('@')) {
@@ -236,9 +236,6 @@ Hệ thống AI Business Health Check 2026`;
 
     const emailSubject = `[BÁO CÁO CHIẾN LƯỢC CEO] Chẩn Đoán & Định Vị Doanh Nghiệp ${profile.businessName}`;
     const emailBody = generateEmailText();
-
-    // 1. Luôn tự động tải file PDF trực tiếp về máy người dùng trước để đảm bảo CEO không bị mất tài liệu
-    const pdfDataUri = await handleDownloadPdf();
 
     try {
       const response = await fetch('/api/send-email', {
@@ -258,7 +255,6 @@ Hệ thống AI Business Health Check 2026`;
           subject: emailSubject,
           reportSummary: healthSummary,
           textContent: emailBody,
-          pdfBase64: pdfDataUri || '',
         }),
       });
 
@@ -858,7 +854,7 @@ Hệ thống AI Business Health Check 2026`;
                     className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-900 font-semibold"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Hệ thống sẽ đồng thời tải tệp PDF về máy bạn để bảo đảm lưu trữ an toàn.
+                    Hệ thống sẽ gửi trực tiếp báo cáo chiến lược kèm tệp PDF đính kèm vào hòm thư này.
                   </p>
                 </div>
 
@@ -879,7 +875,7 @@ Hệ thống AI Business Health Check 2026`;
                 <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl text-xs space-y-1.5 text-blue-950">
                   <div className="flex items-center gap-2 font-bold text-blue-900">
                     <Paperclip className="w-4 h-4 text-blue-600" />
-                    <span>Tự động xuất tệp PDF độ phân giải cao 1 trang</span>
+                    <span>Đính kèm tệp PDF chiến lược tiêu chuẩn CEO</span>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
                     Bao gồm điểm số sức khỏe ({healthScore}/100), hành động đòn bẩy 30 ngày, tam giác nhận định và lộ trình 90 ngày của CEO.
@@ -902,12 +898,12 @@ Hệ thống AI Business Health Check 2026`;
                     {isSendingEmail ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Đang tạo PDF &amp; xử lý...</span>
+                        <span>Đang gửi email...</span>
                       </>
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5" />
-                        <span>Tải Báo Cáo &amp; Gửi Về Email</span>
+                        <span>Gửi Vào Email Ngay</span>
                       </>
                     )}
                   </button>

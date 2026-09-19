@@ -151,7 +151,7 @@ export default async function handler(req: any, res: any) {
               service: "gmail",
               auth: {
                 user: cleanSmtpUser,
-                pass: cleanPass,
+                pass: cleanSmtpPass,
               },
             })
           : nodemailer.createTransport({
@@ -163,7 +163,7 @@ export default async function handler(req: any, res: any) {
                 process.env.SMTP_PORT === "465",
               auth: {
                 user: cleanSmtpUser,
-                pass: cleanPass,
+                pass: cleanSmtpPass,
               },
             });
 
