@@ -1,7 +1,5 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
-import { jsPDF } from "jspdf";
-import { setupVietnameseFont } from "../src/services/vietnameseFont";
+import { Resend } from "resend";
 
 export interface ReportEmailData {
   email: string;
@@ -44,369 +42,219 @@ export interface ReportEmailData {
   pdfFileSizeKb?: number;
 }
 
-function sanitizePdfText(str: string | undefined): string {
-  if (!str) return '';
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .trim();
-}
-
-function generateExecutivePdfBuffer(data: ReportEmailData): Buffer {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  setupVietnameseFont(doc);
-
-  const pageWidth = 210;
-  const margin = 12;
-  const contentWidth = pageWidth - margin * 2;
-
-  const businessName = (data.businessName || 'Doanh Nghiệp').trim();
-  const ceoName = (data.receiverName || 'CEO / Lãnh Đạo').trim();
-  const industry = (data.profile?.industry || 'Thương mại & Dịch vụ').trim();
-  const score = data.healthScore !== undefined ? data.healthScore : 72;
-
-  // Header Banner
-  doc.setFillColor(15, 23, 42);
-  doc.rect(margin, 12, contentWidth, 24, 'F');
-
-  doc.setTextColor(147, 197, 253);
-  doc.setFontSize(7.5);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text('AI BUSINESS HEALTH CHECK 2026 - EXECUTIVE STRATEGY REPORT', margin + 5, 18);
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(13);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text(`BẢN ĐỒ CHIẾN LƯỢC & ĐỊNH VỊ: ${businessName.toUpperCase()}`, margin + 5, 26);
-
-  doc.setTextColor(203, 213, 225);
-  doc.setFontSize(7.5);
-  doc.setFont('DejaVuSans', 'normal');
-  doc.text(`Người nhận: ${ceoName} | Ngành: ${industry} | Thời điểm: ${new Date().toLocaleDateString('vi-VN')}`, margin + 5, 32);
-
-  // Score Box
-  let currentY = 40;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, currentY, contentWidth, 22, 'FD');
-
-  doc.setFont('DejaVuSans', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('CHỈ SỐ SỨC KHỎE', margin + 5, currentY + 6);
-
-  const scoreColor = score >= 80 ? [22, 163, 74] : score >= 60 ? [29, 78, 216] : [234, 88, 12];
-  doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
-  doc.setFontSize(20);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text(`${score}`, margin + 5, currentY + 16);
-
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.text('/100', margin + 20, currentY + 14);
-
-  doc.setDrawColor(226, 232, 240);
-  doc.line(margin + 36, currentY + 3, margin + 36, currentY + 19);
-
-  doc.setTextColor(30, 64, 175);
-  doc.setFontSize(7.5);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text('NHẬN ĐỊNH CHIẾN LƯỢC TỔNG QUAN:', margin + 40, currentY + 6);
-
-  const summary = (data.healthSummary || 'Doanh nghiệp đang có nền tảng tốt nhưng cần tập trung tối ưu hóa quy trình giữ chân khách hàng và tự động hóa vận hành.').trim();
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(8);
-  doc.setFont('DejaVuSans', 'normal');
-  const splitSummary = doc.splitTextToSize(`"${summary}"`, contentWidth - 45);
-  doc.text(splitSummary, margin + 40, currentY + 11);
-
-  // 5 Pillars
-  currentY = 66;
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(9);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text('1. ĐÁNH GIÁ 5 TRỤ CỘT NĂNG LỰC DOANH NGHIỆP (SCORECARD)', margin, currentY);
-
-  currentY += 4;
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, currentY, contentWidth, 34, 'FD');
-
-  const pillars = [
-    { label: 'Tài chính & Dòng tiền (Cashflow & Unit Economics)', score: data.radarScores?.finance || 72 },
-    { label: 'Vận hành & Hệ thống (Operations & Process Automation)', score: data.radarScores?.operations || 65 },
-    { label: 'Tiếp thị & Khách hàng (Marketing & Retention Engines)', score: data.radarScores?.marketing || 80 },
-    { label: 'Đội ngũ & Con người (Team Alignment & Culture)', score: data.radarScores?.team || 68 },
-    { label: 'Lợi thế cạnh tranh & Sản phẩm (Product Moat & IP)', score: data.radarScores?.advantage || 85 },
-  ];
-
-  let barY = currentY + 5;
-  pillars.forEach((p) => {
-    doc.setFont('DejaVuSans', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text(p.label, margin + 4, barY);
-
-    doc.setFont('DejaVuSans', 'bold');
-    doc.setTextColor(29, 78, 216);
-    doc.text(`${p.score}/100`, margin + 115, barY);
-
-    doc.setFillColor(226, 232, 240);
-    doc.rect(margin + 130, barY - 2.5, 48, 3, 'F');
-
-    const barWidth = (Math.min(100, Math.max(0, p.score)) / 100) * 48;
-    doc.setFillColor(37, 99, 235);
-    doc.rect(margin + 130, barY - 2.5, barWidth, 3, 'F');
-
-    barY += 5.8;
-  });
-
-  // Action
-  currentY = 108;
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(9);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text('2. HÀNH ĐỘNG ĐÒN BẨY QUYẾT ĐỊNH TRONG 30 NGÀY (IF ONLY ONE THING)', margin, currentY);
-
-  currentY += 4;
-  doc.setFillColor(254, 243, 199);
-  doc.setDrawColor(245, 158, 11);
-  doc.rect(margin, currentY, contentWidth, 18, 'FD');
-
-  const ifOneThing = (data.ifOnlyOneThing?.action || 'Khai thác tối đa giá trị vòng đời khách hàng cũ thông qua chuỗi chăm sóc tự động để tăng biên lợi nhuận gộp ngay lập tức.').trim();
-  doc.setTextColor(146, 64, 14);
-  doc.setFontSize(8);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text('ĐÒN BẨY CHIẾN LƯỢC:', margin + 4, currentY + 5);
-
-  doc.setFont('DejaVuSans', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(69, 26, 3);
-  const splitOneThing = doc.splitTextToSize(ifOneThing, contentWidth - 10);
-  doc.text(splitOneThing, margin + 4, currentY + 10);
-
-  // Insights
-  currentY = 134;
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(9);
-  doc.setFont('DejaVuSans', 'bold');
-  doc.text('3. TAM GIÁC NHẬN ĐỊNH CHIẾN LƯỢC (STRATEGIC TRIANGLE)', margin, currentY);
-
-  currentY += 4;
-  const insights = [
-    {
-      title: 'DÒNG TIỀN & HIỆN TRẠNG',
-      text: (data.threeKeyInsights?.greatestStrength || 'Nguồn thu ổn định nhưng chi phí duy trì bộ máy cần được tinh gọn bằng công nghệ.').trim(),
-      bg: [239, 246, 255],
-      border: [191, 219, 254],
-      titleColor: [30, 64, 175],
-    },
-    {
-      title: 'ĐIỂM NGHẼN CỐT LÕI',
-      text: (data.threeKeyInsights?.biggestBottleneck || 'Quy trình bán hàng phụ thuộc nhiều vào con người, thiếu hệ thống ghi nhận tự động.').trim(),
-      bg: [254, 242, 242],
-      border: [254, 202, 202],
-      titleColor: [153, 27, 27],
-    },
-    {
-      title: 'CƠ HỘI BỨT PHÁ',
-      text: (data.threeKeyInsights?.mostPromisingOpportunity || 'Ứng dụng AI vào tư vấn và chăm sóc khách hàng giúp giảm 40% thời gian xử lý đơn hàng.').trim(),
-      bg: [240, 253, 244],
-      border: [187, 247, 208],
-      titleColor: [22, 101, 52],
-    },
-  ];
-
-  insights.forEach((ins) => {
-    doc.setFillColor(ins.bg[0], ins.bg[1], ins.bg[2]);
-    doc.setDrawColor(ins.border[0], ins.border[1], ins.border[2]);
-    doc.rect(margin, currentY, contentWidth, 15, 'FD');
-
-    doc.setFont('DejaVuSans', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(ins.titleColor[0], ins.titleColor[1], ins.titleColor[2]);
-    doc.text(ins.title, margin + 4, currentY + 4.5);
-
-    doc.setFont('DejaVuSans', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    const splitIns = doc.splitTextToSize(ins.text, contentWidth - 8);
-    doc.text(splitIns, margin + 4, currentY + 9);
-
-    currentY += 17;
-  });
-
-  // Footer
-  doc.setFont('DejaVuSans', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.text(
-    'Báo cáo chiến lược độc quyền dành cho CEO được tạo bởi AI Business Health Check Engine 2026. Bảo mật tuyệt đối.',
-    pageWidth / 2,
-    287,
-    { align: 'center' }
-  );
-
-  return Buffer.from(doc.output('arraybuffer'));
-}
-
+// Tạo giao diện Email HTML Executive sang trọng, hiện đại, tối ưu cho CEO
 function createExecutiveEmailHtml(data: ReportEmailData): string {
-  const score = data.healthScore !== undefined ? data.healthScore : 74;
-  const scoreColor = score >= 80 ? '#16a34a' : score >= 60 ? '#2563eb' : '#ea580c';
-  const scoreBadgeBg = score >= 80 ? '#dcfce7' : score >= 60 ? '#dbeafe' : '#ffedd5';
-  const scoreGrade = score >= 80 ? 'HẠNG A • KHỎE MẠNH VỮNG VÀNG' : score >= 60 ? 'HẠNG B • TIỀM NĂNG - CẦN TỐI ƯU' : 'HẠNG C • CẢNH BÁO NGUY CƠ';
+  const bName = data.businessName || "Doanh Nghiệp";
+  const rName = data.receiverName || "CEO / Lãnh Đạo";
+  const score = data.healthScore !== undefined ? data.healthScore : 72;
+  const ind = data.profile?.industry || "Thương mại & Dịch vụ";
+  const fileName = data.pdfFileName || `Bao_Cao_Chien_Luoc_CEO_${bName.replace(/\s+/g, "_")}.pdf`;
+  const fileSize = data.pdfFileSizeKb || 145;
 
-  const radar = {
-    finance: data.radarScores?.finance || 72,
-    operations: data.radarScores?.operations || 65,
-    marketing: data.radarScores?.marketing || 80,
-    team: data.radarScores?.team || 68,
-    advantage: data.radarScores?.advantage || 85,
-  };
+  const scoreColor = score >= 80 ? "#16a34a" : score >= 60 ? "#2563eb" : "#ea580c";
+  const scoreBadge = score >= 80 ? "SỨC KHỎE TỐT" : score >= 60 ? "TIỀM NĂNG - CẦN TỐI ƯU" : "CẦN TẬP TRUNG GỠ NGHẼN";
 
-  const insights = {
-    strength: data.threeKeyInsights?.greatestStrength || 'Sản phẩm có lợi thế cạnh tranh tự nhiên và tỷ lệ khách hàng hài lòng cao.',
-    bottleneck: data.threeKeyInsights?.biggestBottleneck || 'Phụ thuộc vào khách mới, tỷ lệ quay lại mua hàng chưa được khai thác triệt để.',
-    opportunity: data.threeKeyInsights?.mostPromisingOpportunity || 'Xây dựng phễu chăm sóc tự động và gói sản phẩm định kỳ (combo/membership).',
-  };
+  const ifAction = data.ifOnlyOneThing?.action || "Tập trung kích hoạt lại tệp khách hàng cũ qua chuỗi chăm sóc tự động.";
+  const ifReason = data.ifOnlyOneThing?.reason || "Chi phí bán lại cho khách cũ thấp hơn nhiều so với tìm kiếm khách mới.";
+  const ifImpact = data.ifOnlyOneThing?.impact || "Tăng ngay 20-35% doanh thu định kỳ.";
 
-  const action = {
-    action: data.ifOnlyOneThing?.action || 'Kích hoạt chiến dịch gọi điện/nhắn tin chăm sóc 100 khách hàng cũ thân thiết nhất.',
-    reason: data.ifOnlyOneThing?.reason || 'Chi phí giữ chân khách cũ chỉ bằng 1/5 chi phí tìm khách mới, tạo dòng tiền nóng ngay lập tức.',
-    impact: data.ifOnlyOneThing?.impact || 'Dự kiến tăng ngay 15% - 25% doanh thu trong 30 ngày mà không tốn thêm ngân sách quảng cáo.',
-  };
+  const strength = data.threeKeyInsights?.greatestStrength || "Chất lượng sản phẩm và sự hài lòng của khách hàng thân thiết.";
+  const bottleneck = data.threeKeyInsights?.biggestBottleneck || "Quy trình bán hàng còn phụ thuộc nhân sự, thiếu hệ thống tự động nhắc mua lại.";
+  const opportunity = data.threeKeyInsights?.mostPromisingOpportunity || "Ứng dụng AI và tự động hóa vào quy trình tư vấn, đóng gói giải pháp trọn gói.";
 
-  return `
-<!DOCTYPE html>
+  const plans = data.ninetyDayPlan || [
+    { timeline: "Ngày 1 - 30", title: "Bịt lỗ rò rỉ dòng tiền & Tái kích hoạt khách hàng cũ", objective: "Khóa chặt rò rỉ dữ liệu, kích hoạt khách hàng thân thiết", kpi: "Tăng 15% tỷ lệ mua lại" },
+    { timeline: "Ngày 31 - 60", title: "Chuẩn hóa quy trình vận hành và ứng dụng AI tự động hóa", objective: "Đóng gói quy trình tư vấn và bàn giao", kpi: "Giảm 30% thời gian xử lý đơn hàng" },
+    { timeline: "Ngày 61 - 90", title: "Mở rộng kênh tiếp cận và bứt phá quy mô", objective: "Nhân bản mô hình kinh doanh và mở rộng kênh", kpi: "Đạt mục tiêu tăng trưởng doanh số quý" },
+  ];
+
+  return `<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <title>Bản Đồ Chiến Lược & Tư Vấn Điều Hành CEO - ${data.businessName}</title>
+  <title>Báo Cáo Chiến Lược CEO - ${bName}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 24px 8px;">
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 24px 0;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width: 650px; background-color: #ffffff; border-radius: 24px; border: 1px solid #cbd5e1; overflow: hidden;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER BANNER -->
           <tr>
-            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%); padding: 36px 28px; text-align: left; border-bottom: 3px solid #2563eb;">
-              <span style="display: inline-block; background-color: rgba(59,130,246,0.25); border: 1px solid rgba(147,197,253,0.3); color: #93c5fd; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; margin-bottom: 12px;">
-                ✦ AI BUSINESS HEALTH CHECK 2026
-              </span>
-              <h1 style="color: #ffffff; font-size: 22px; font-weight: 900; margin: 0 0 8px 0;">
-                BẢN ĐỒ CHIẾN LƯỢC & TƯ VẤN ĐIỀU HÀNH CEO
-              </h1>
-              <p style="color: #cbd5e1; font-size: 13px; margin: 0;">
-                Báo cáo chẩn đoán dành riêng cho <strong>${data.receiverName || 'CEO'}</strong> • Doanh nghiệp: <strong style="color: #ffffff;">${data.businessName}</strong>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 16px 28px 0 28px;">
-              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 16px; padding: 14px 18px; font-size: 12px; color: #1e3a8a;">
-                📎 <strong>Tệp PDF đính kèm:</strong> ${data.pdfFileName || 'Bao_Cao_Chien_Luoc_CEO.pdf'} (${data.pdfFileSizeKb || 11} KB). Hãy cuộn xuống chân email để tải hoặc in trực tiếp.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 20px 28px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 20px;">
+            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 32px 28px; text-align: left;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td width="120" align="center" style="vertical-align: middle; border-right: 1px solid #cbd5e1; padding-right: 16px;">
-                    <div style="font-size: 10px; font-weight: 800; color: #64748b;">ĐIỂM SỨC KHỎE</div>
-                    <div style="font-size: 40px; font-weight: 900; color: ${scoreColor}; margin: 4px 0;">${score}</div>
-                    <div style="font-size: 10px; font-weight: 800; color: ${scoreColor}; background-color: ${scoreBadgeBg}; padding: 2px 6px; border-radius: 8px;">${scoreGrade}</div>
-                  </td>
-                  <td style="padding-left: 20px; vertical-align: middle;">
-                    <div style="font-size: 11px; font-weight: 800; color: #2563eb;">✦ NHẬN ĐỊNH TỪ CHUYÊN GIA AI</div>
-                    <div style="font-size: 13px; font-weight: 600; color: #1e293b; margin-top: 6px; line-height: 1.5;">
-                      “${data.healthSummary || 'Doanh nghiệp sở hữu nền tảng tốt, cần tập trung tối ưu dòng tiền và giữ chân khách hàng.'}”
-                    </div>
+                  <td>
+                    <span style="display: inline-block; background: rgba(255,255,255,0.15); color: #93c5fd; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      AI STRATEGY EXECUTIVE REPORT 2026
+                    </span>
+                    <h1 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 12px 0 6px 0; letter-spacing: -0.3px;">
+                      ${bName}
+                    </h1>
+                    <p style="color: #cbd5e1; font-size: 13px; margin: 0;">
+                      Kính gửi: <strong>${rName}</strong> | Ngành: ${ind}
+                    </p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+
+          <!-- ATTACHMENT NOTICE BANNER -->
           <tr>
-            <td style="padding: 0 28px 20px 28px;">
-              <div style="font-size: 12px; font-weight: 900; color: #0f172a; margin-bottom: 10px;">📊 5 TRỤ CỘT NĂNG LỰC DOANH NGHIỆP</div>
-              <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px 18px; font-size: 12px; line-height: 2;">
-                <div>• Tài chính & Dòng tiền: <strong>${radar.finance}/100</strong></div>
-                <div>• Vận hành & Hệ thống: <strong>${radar.operations}/100</strong></div>
-                <div>• Tiếp thị & Khách hàng: <strong>${radar.marketing}/100</strong></div>
-                <div>• Đội ngũ & Nhân sự: <strong>${radar.team}/100</strong></div>
-                <div>• Lợi thế cạnh tranh & SP: <strong>${radar.advantage}/100</strong></div>
-              </div>
+            <td style="background-color: #eff6ff; padding: 14px 28px; border-bottom: 1px solid #dbeafe;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="28" valign="middle">
+                    <span style="font-size: 20px;">📎</span>
+                  </td>
+                  <td valign="middle" style="font-size: 13px; color: #1e40af; font-weight: 600;">
+                    Tệp đính kèm: <strong>${fileName}</strong> (~${fileSize} KB) đã được đính kèm vào email này.
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+
+          <!-- CONTENT BODY -->
           <tr>
-            <td style="padding: 0 28px 24px 28px;">
-              <div style="background-color: #fefce8; border: 2px solid #fde047; border-radius: 18px; padding: 18px;">
-                <div style="font-size: 10px; font-weight: 900; color: #854d0e; text-transform: uppercase;">🎯 ĐÒN BẨY SỐ 1 TRONG 30 NGÀY TỚI</div>
-                <div style="font-size: 15px; font-weight: 900; color: #713f12; margin: 6px 0;">${action.action}</div>
-                <div style="font-size: 12px; color: #854d0e; margin-bottom: 6px;"><strong>Lý do:</strong> ${action.reason}</div>
-                <div style="font-size: 12px; font-weight: 800; color: #15803d;">🚀 Kỳ vọng: ${action.impact}</div>
+            <td style="padding: 28px;">
+              
+              <!-- SCORE CARD -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center; border-right: 1px solid #e2e8f0;" width="140">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">CHỈ SỐ SỨC KHỎE</div>
+                    <div style="font-size: 38px; font-weight: 900; color: ${scoreColor}; line-height: 1.1; margin: 4px 0;">
+                      ${score}<span style="font-size: 16px; color: #94a3b8; font-weight: 600;">/100</span>
+                    </div>
+                    <span style="display: inline-block; background-color: #ffffff; border: 1px solid ${scoreColor}; color: ${scoreColor}; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px;">
+                      ${scoreBadge}
+                    </span>
+                  </td>
+                  <td style="padding: 20px;" valign="middle">
+                    <div style="font-size: 12px; font-weight: 700; color: #3b82f6; text-transform: uppercase; margin-bottom: 4px;">NHẬN ĐỊNH TỔNG QUAN</div>
+                    <div style="font-size: 13.5px; color: #334155; line-height: 1.5;">
+                      ${data.healthSummary || "Doanh nghiệp có nền tảng cốt lõi vững chắc, cần tập trung kích hoạt đòn bẩy dòng tiền để tối đa hóa hiệu quả hoạt động."}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- IF ONLY ONE THING (ĐÒN BẨY SỐ 1) -->
+              <div style="background-color: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+                <div style="font-size: 12px; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                  ⚡ HÀNH ĐỘNG ĐÒN BẨY QUYẾT ĐỊNH TRONG 30 NGÀY (NẾU CHỈ LÀM 1 VIỆC)
+                </div>
+                <div style="font-size: 14.5px; font-weight: 700; color: #78350f; margin-bottom: 8px;">
+                  👉 ${ifAction}
+                </div>
+                <div style="font-size: 12.5px; color: #92400e; margin-bottom: 4px;">
+                  <strong>Lý do chiến lược:</strong> ${ifReason}
+                </div>
+                <div style="font-size: 12.5px; color: #15803d; font-weight: 600;">
+                  <strong>Kỳ vọng tác động:</strong> ${ifImpact}
+                </div>
               </div>
+
+              <!-- STRATEGIC TRIANGLE -->
+              <div style="margin-bottom: 24px;">
+                <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                  🎯 TAM GIÁC NHẬN ĐỊNH CHIẾN LƯỢC
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding: 12px 14px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin-bottom: 8px; display: block;">
+                      <div style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase;">01. SỨC MẠNH LỚN NHẤT (ĐIỂM TỰA TĂNG TRƯỞNG)</div>
+                      <div style="font-size: 13px; color: #14532d; margin-top: 2px;">${strength}</div>
+                    </td>
+                  </tr>
+                  <tr><td height="8"></td></tr>
+                  <tr>
+                    <td style="padding: 12px 14px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; margin-bottom: 8px; display: block;">
+                      <div style="font-size: 11px; font-weight: 800; color: #991b1b; text-transform: uppercase;">02. ĐIỂM NGHẼN CỐT LÕI (RÒ RỈ CẦN BỊT NGAY)</div>
+                      <div style="font-size: 13px; color: #7f1d1d; margin-top: 2px;">${bottleneck}</div>
+                    </td>
+                  </tr>
+                  <tr><td height="8"></td></tr>
+                  <tr>
+                    <td style="padding: 12px 14px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; display: block;">
+                      <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase;">03. CƠ HỘI ĐÁNG GIÁ NHẤT (BỨT PHÁ DOANH SỐ)</div>
+                      <div style="font-size: 13px; color: #1e3a8a; margin-top: 2px;">${opportunity}</div>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- 90-DAY PLAN SUMMARY -->
+              <div style="margin-bottom: 24px;">
+                <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                  🗓️ LỘ TRÌNH 90 NGÀY HÀNH ĐỘNG CỦA CEO
+                </div>
+                ${plans.slice(0, 3).map((p, idx) => `
+                  <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 8px; background-color: #ffffff;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td>
+                          <span style="font-size: 10px; font-weight: 800; color: #2563eb; background-color: #dbeafe; padding: 2px 8px; border-radius: 6px;">
+                            ${p.timeline || `Giai đoạn 0${idx + 1}`}
+                          </span>
+                          <span style="font-size: 13px; font-weight: 700; color: #0f172a; margin-left: 8px;">
+                            ${p.title}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top: 6px; font-size: 12px; color: #475569;">
+                          • Mục tiêu: ${p.objective}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top: 3px; font-size: 12px; color: #16a34a; font-weight: 600;">
+                          • KPI đo lường: ${p.kpi}
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                `).join("")}
+              </div>
+
+              <!-- FOOTER NOTE -->
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
+                <p style="margin: 0 0 6px 0;">
+                  Báo cáo độc quyền dành cho CEO được tạo bởi <strong>AI Business Health Check Engine 2026</strong>.
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                  Tất cả thông tin được bảo mật và chuẩn hóa theo phương pháp luận TOC (Theory of Constraints) & Strategy Canvas.
+                </p>
+              </div>
+
             </td>
           </tr>
-          <tr>
-            <td style="padding: 0 28px 24px 28px;">
-              <div style="font-size: 12px; font-weight: 900; color: #0f172a; margin-bottom: 10px;">🔍 TAM GIÁC NHẬN ĐỊNH CHIẾN LƯỢC</div>
-              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px; margin-bottom: 8px; font-size: 12px;">
-                <strong style="color: #166534;">🟢 Điểm mạnh lớn nhất:</strong> ${insights.strength}
-              </div>
-              <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 12px; margin-bottom: 8px; font-size: 12px;">
-                <strong style="color: #991b1b;">🔴 Điểm nghẽn cần gỡ:</strong> ${insights.bottleneck}
-              </div>
-              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px; font-size: 12px;">
-                <strong style="color: #1e40af;">🔵 Cơ hội nhân doanh số:</strong> ${insights.opportunity}
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #0f172a; padding: 20px 28px; text-align: center; color: #94a3b8; font-size: 11px;">
-              AI BUSINESS HEALTH CHECK 2026 • Hệ thống chẩn đoán sức khỏe & chiến lược điều hành CEO độc lập.
-            </td>
-          </tr>
+
         </table>
       </td>
     </tr>
   </table>
 </body>
-</html>
-  `;
+</html>`;
 }
 
 export default async function handler(req: any, res: any) {
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ status: "error", message: "Method Not Allowed" });
+    return res.status(405).json({ status: "error", message: "Chỉ hỗ trợ phương thức POST" });
   }
 
   try {
-    let payload = req.body;
-    if (typeof payload === "string") {
-      try {
-        payload = JSON.parse(payload);
-      } catch (e) {
-        console.warn("Lỗi parse payload string:", e);
-      }
-    }
-    payload = payload || {};
-
     const {
       email,
       receiverName,
@@ -414,6 +262,7 @@ export default async function handler(req: any, res: any) {
       subject,
       reportSummary,
       textContent,
+      pdfBase64,
       healthScore,
       healthSummary,
       threeKeyInsights,
@@ -421,7 +270,7 @@ export default async function handler(req: any, res: any) {
       ninetyDayPlan,
       radarScores,
       profile,
-    } = payload;
+    } = req.body || {};
 
     if (!email || !email.includes("@")) {
       return res.status(400).json({ status: "error", message: "Địa chỉ email không hợp lệ" });
@@ -429,12 +278,12 @@ export default async function handler(req: any, res: any) {
 
     const cleanSmtpUser = (process.env.SMTP_USER || "").trim();
     const cleanSmtpPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || "").replace(/\s+/g, "").trim();
-    const hasRealSmtp = Boolean(cleanSmtpUser && cleanSmtpPass);
-
     const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
-    const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-    if (!resend && !hasRealSmtp) {
+    const hasRealSmtp = Boolean(cleanSmtpUser && cleanSmtpPass);
+    const hasResend = Boolean(resendApiKey);
+
+    if (!hasRealSmtp && !hasResend) {
       return res.status(400).json({
         status: "needs_smtp_config",
         isRealDelivery: false,
@@ -442,10 +291,8 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const emailSubject =
-      subject || `[BÁO CÁO CHIẾN LƯỢC CEO] Chẩn Đoán & Định Vị Doanh Nghiệp ${businessName || "Doanh Nghiệp"}`;
-
-    const asciiBusinessName = (businessName || "Doanh_Nghiep")
+    const bName = businessName || "Doanh Nghiệp";
+    const asciiBusinessName = bName
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/đ/g, "d")
@@ -453,34 +300,27 @@ export default async function handler(req: any, res: any) {
       .trim()
       .replace(/\s+/g, "_")
       .replace(/[^a-zA-Z0-9_]/g, "");
+
     const pdfFileName = `Bao_Cao_Chien_Luoc_CEO_${asciiBusinessName || "Doanh_Nghiep"}.pdf`;
 
-    // Sinh file PDF độ nét cao bằng jsPDF (100% trong RAM, không đọc ổ đĩa)
+    // Giải mã file PDF vector đính kèm từ frontend gửi lên
     let pdfBuffer: Buffer | null = null;
-    try {
-      pdfBuffer = generateExecutivePdfBuffer({
-        email,
-        receiverName,
-        businessName,
-        healthScore,
-        healthSummary: healthSummary || reportSummary,
-        threeKeyInsights,
-        ifOnlyOneThing,
-        ninetyDayPlan,
-        radarScores,
-        profile,
-        pdfFileName,
-      });
-    } catch (pdfErr) {
-      console.warn("Lỗi sinh PDF:", pdfErr);
+    if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 200) {
+      try {
+        const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "").trim();
+        pdfBuffer = Buffer.from(cleanBase64, "base64");
+      } catch (err) {
+        console.warn("Lỗi decode base64:", err);
+      }
     }
 
-    const pdfFileSizeKb = pdfBuffer ? Math.max(1, Math.round(pdfBuffer.length / 1024)) : 11;
+    const pdfFileSizeKb = pdfBuffer ? Math.max(1, Math.round(pdfBuffer.length / 1024)) : 145;
 
+    const emailSubject = subject || `[BÁO CÁO CHIẾN LƯỢC CEO] Chẩn Đoán & Định Vị Doanh Nghiệp ${bName}`;
     const emailHtml = createExecutiveEmailHtml({
       email,
       receiverName,
-      businessName,
+      businessName: bName,
       healthScore,
       healthSummary: healthSummary || reportSummary,
       threeKeyInsights,
@@ -492,32 +332,55 @@ export default async function handler(req: any, res: any) {
       pdfFileSizeKb,
     });
 
-    // 1. Ưu tiên gửi bằng Google Workspace / Gmail SMTP
+    const attachments = pdfBuffer
+      ? [
+          {
+            filename: pdfFileName,
+            content: pdfBuffer,
+            contentType: "application/pdf",
+          },
+        ]
+      : [];
+
+    // 1. ƯU TIÊN GỬI QUA GMAIL SMTP VỚI SERVICE PRESET (Giống test-email.ts, kết nối 100% ổn định)
     if (hasRealSmtp) {
       try {
         const configuredHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
-        const configuredPort = Number(process.env.SMTP_PORT) || 465;
-        const isSecure = configuredPort === 465 || process.env.SMTP_SECURE === "true";
+        const isGmail =
+          configuredHost.toLowerCase().includes("gmail") ||
+          configuredHost.toLowerCase().includes("google") ||
+          cleanSmtpUser.toLowerCase().includes("@gmail.com");
 
-        const transporter = nodemailer.createTransport({
-          host: configuredHost,
-          port: configuredPort,
-          secure: isSecure,
-          auth: {
-            user: cleanSmtpUser,
-            pass: cleanSmtpPass,
-          },
-          connectionTimeout: 8000,
-          greetingTimeout: 8000,
-          socketTimeout: 10000,
-          tls: {
-            rejectUnauthorized: false,
-          },
-        });
+        const transporter = isGmail
+          ? nodemailer.createTransport({
+              service: "gmail",
+              auth: {
+                user: cleanSmtpUser,
+                pass: cleanSmtpPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
+              },
+            })
+          : nodemailer.createTransport({
+              host: configuredHost,
+              port: Number(process.env.SMTP_PORT) || 465,
+              secure:
+                process.env.SMTP_SECURE === "true" ||
+                !process.env.SMTP_PORT ||
+                process.env.SMTP_PORT === "465",
+              auth: {
+                user: cleanSmtpUser,
+                pass: cleanSmtpPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
+              },
+            });
 
         const senderFrom = cleanSmtpUser.includes("<")
           ? cleanSmtpUser
-          : `"AI Business Check-up" <${cleanSmtpUser}>`;
+          : `"AI Business Health Check" <${cleanSmtpUser}>`;
 
         const mailOptions: any = {
           from: senderFrom,
@@ -525,15 +388,7 @@ export default async function handler(req: any, res: any) {
           subject: emailSubject,
           text: textContent || reportSummary || "Báo cáo chiến lược điều hành doanh nghiệp",
           html: emailHtml,
-          attachments: pdfBuffer
-            ? [
-                {
-                  filename: pdfFileName,
-                  content: pdfBuffer,
-                  contentType: "application/pdf",
-                },
-              ]
-            : [],
+          attachments,
         };
 
         const info = await transporter.sendMail(mailOptions);
@@ -543,7 +398,7 @@ export default async function handler(req: any, res: any) {
           status: "ok",
           isRealDelivery: true,
           provider: "smtp",
-          message: `Báo cáo chiến lược cho doanh nghiệp "${businessName || "Doanh nghiệp"}" đã được chuyển phát thành công vào hộp thư ${email}!`,
+          message: `Báo cáo chiến lược cho "${bName}" đã được chuyển phát thành công vào hộp thư ${email}!`,
           messageId: info.messageId,
           deliveredTo: email,
           attachmentName: pdfFileName,
@@ -552,7 +407,7 @@ export default async function handler(req: any, res: any) {
         });
       } catch (smtpErr: any) {
         console.error("[SMTP ERROR]", smtpErr);
-        if (!resend) {
+        if (!hasResend) {
           let errorExplanation = smtpErr.message || String(smtpErr);
           if (
             errorExplanation.includes("535") ||
@@ -560,7 +415,7 @@ export default async function handler(req: any, res: any) {
             smtpErr.code === "EAUTH"
           ) {
             errorExplanation =
-              "Lỗi xác thực Gmail (EAUTH 535): Google từ chối mật khẩu. Vui lòng kiểm tra lại 'Mật khẩu ứng dụng' (App Password 16 chữ cái) trong tài khoản Google.";
+              "Lỗi xác thực Gmail (EAUTH 535): Google từ chối mật khẩu. Vui lòng dùng 'Mật khẩu ứng dụng' (App Password 16 chữ cái) trong tài khoản Google Security.";
           }
           return res.status(400).json({
             status: "smtp_error",
@@ -572,11 +427,12 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 2. Dự phòng Resend nếu SMTP thất bại
-    if (resend) {
+    // 2. Dự phòng Resend API nếu có cấu hình
+    if (hasResend) {
       try {
+        const resend = new Resend(resendApiKey);
         const fromAddress = (process.env.RESEND_FROM || "onboarding@resend.dev").trim();
-        const attachments = pdfBuffer
+        const resendAttachments = pdfBuffer
           ? [
               {
                 filename: pdfFileName,
@@ -591,7 +447,7 @@ export default async function handler(req: any, res: any) {
           subject: emailSubject,
           html: emailHtml,
           text: textContent || reportSummary || "Báo cáo chiến lược điều hành doanh nghiệp",
-          attachments,
+          attachments: resendAttachments,
         });
 
         if (sendResult.error) {
@@ -599,7 +455,6 @@ export default async function handler(req: any, res: any) {
             status: "resend_error",
             isRealDelivery: false,
             message: `Cổng Resend phản hồi: ${sendResult.error.message}`,
-            detail: sendResult.error,
           });
         }
 

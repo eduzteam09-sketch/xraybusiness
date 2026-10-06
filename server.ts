@@ -261,15 +261,37 @@ async function startServer() {
 
       // 2. NẾU CÓ CẤU HÌNH SMTP THỰC TẾ: GỬI QUA SMTP
       if (hasRealSmtp) {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || "smtp.gmail.com",
-          port: Number(process.env.SMTP_PORT) || 465,
-          secure: process.env.SMTP_SECURE === "true" || !process.env.SMTP_PORT || process.env.SMTP_PORT === "465",
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS || process.env.SMTP_PASSWORD,
-          },
-        });
+        const cleanSmtpUser = (process.env.SMTP_USER || "").trim();
+        const cleanSmtpPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || "").replace(/\s+/g, "").trim();
+        const configuredHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
+        const isGmail =
+          configuredHost.toLowerCase().includes("gmail") ||
+          configuredHost.toLowerCase().includes("google") ||
+          cleanSmtpUser.toLowerCase().includes("@gmail.com");
+
+        const transporter = isGmail
+          ? nodemailer.createTransport({
+              service: "gmail",
+              auth: {
+                user: cleanSmtpUser,
+                pass: cleanSmtpPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
+              },
+            })
+          : nodemailer.createTransport({
+              host: configuredHost,
+              port: Number(process.env.SMTP_PORT) || 465,
+              secure: process.env.SMTP_SECURE === "true" || !process.env.SMTP_PORT || process.env.SMTP_PORT === "465",
+              auth: {
+                user: cleanSmtpUser,
+                pass: cleanSmtpPass,
+              },
+              tls: {
+                rejectUnauthorized: false,
+              },
+            });
 
         const mailOptions = {
           from: `"AI Business Check-up" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,

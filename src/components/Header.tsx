@@ -126,11 +126,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-print-btn"
             onClick={onPrintReport}
-            title="In / Xuất Báo Cáo Chiến Lược"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+            title="Xem Báo Cáo Chiến Lược CEO (Tải PDF & Gửi Email)"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors shadow-2xs"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-600" />
-            <span className="hidden sm:inline">Xuất Báo Cáo</span>
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span>Báo Cáo CEO (PDF/Mail)</span>
           </button>
         )}
 
