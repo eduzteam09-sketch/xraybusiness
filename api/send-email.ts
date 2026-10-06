@@ -42,7 +42,7 @@ export interface ReportEmailData {
   pdfFileSizeKb?: number;
 }
 
-// Tạo giao diện Email HTML Executive sang trọng, hiện đại, tối ưu cho CEO
+// Tạo giao diện Email HTML Executive sang trọng, hiện đại, chuẩn CEO
 function createExecutiveEmailHtml(data: ReportEmailData): string {
   const bName = data.businessName || "Doanh Nghiệp";
   const rName = data.receiverName || "CEO / Lãnh Đạo";
@@ -283,14 +283,6 @@ export default async function handler(req: any, res: any) {
     const hasRealSmtp = Boolean(cleanSmtpUser && cleanSmtpPass);
     const hasResend = Boolean(resendApiKey);
 
-    if (!hasRealSmtp && !hasResend) {
-      return res.status(400).json({
-        status: "needs_smtp_config",
-        isRealDelivery: false,
-        message: "Chưa cấu hình tài khoản gửi mail. Vui lòng cấu hình SMTP_USER và SMTP_PASS.",
-      });
-    }
-
     const bName = businessName || "Doanh Nghiệp";
     const asciiBusinessName = bName
       .normalize("NFD")
@@ -303,11 +295,17 @@ export default async function handler(req: any, res: any) {
 
     const pdfFileName = `Bao_Cao_Chien_Luoc_CEO_${asciiBusinessName || "Doanh_Nghiep"}.pdf`;
 
-    // Giải mã file PDF vector đính kèm từ frontend gửi lên
+    // Giải mã file PDF vector đính kèm từ frontend gửi lên (xử lý mọi định dạng data URI / base64)
     let pdfBuffer: Buffer | null = null;
-    if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 200) {
+    if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 100) {
       try {
-        const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "").trim();
+        let cleanBase64 = pdfBase64;
+        if (cleanBase64.includes(";base64,")) {
+          cleanBase64 = cleanBase64.split(";base64,")[1];
+        } else if (cleanBase64.includes("base64,")) {
+          cleanBase64 = cleanBase64.split("base64,")[1];
+        }
+        cleanBase64 = cleanBase64.replace(/\s+/g, "").trim();
         pdfBuffer = Buffer.from(cleanBase64, "base64");
       } catch (err) {
         console.warn("Lỗi decode base64:", err);
@@ -342,7 +340,17 @@ export default async function handler(req: any, res: any) {
         ]
       : [];
 
-    // 1. ƯU TIÊN GỬI QUA GMAIL SMTP VỚI SERVICE PRESET (Giống test-email.ts, kết nối 100% ổn định)
+    if (!hasRealSmtp && !hasResend) {
+      return res.status(200).json({
+        status: "needs_smtp_config",
+        isRealDelivery: false,
+        message: "Chưa cấu hình cổng gửi mail (cần SMTP_USER/SMTP_PASS hoặc RESEND_API_KEY). Tự động tải file PDF về máy.",
+        attachmentName: pdfFileName,
+        attachmentSize: `${pdfFileSizeKb} KB`,
+      });
+    }
+
+    // 1. ƯU TIÊN GỬI QUA GMAIL SMTP VỚI SERVICE PRESET
     if (hasRealSmtp) {
       try {
         const configuredHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
@@ -415,13 +423,14 @@ export default async function handler(req: any, res: any) {
             smtpErr.code === "EAUTH"
           ) {
             errorExplanation =
-              "Lỗi xác thực Gmail (EAUTH 535): Google từ chối mật khẩu. Vui lòng dùng 'Mật khẩu ứng dụng' (App Password 16 chữ cái) trong tài khoản Google Security.";
+              "Lỗi xác thực Gmail (EAUTH 535): Google từ chối mật khẩu. Vui lòng kiểm tra lại 'Mật khẩu ứng dụng' (App Password 16 chữ cái) trong tài khoản Google Security.";
           }
           return res.status(400).json({
             status: "smtp_error",
             isRealDelivery: false,
             message: errorExplanation,
             detail: smtpErr.message,
+            attachmentName: pdfFileName,
           });
         }
       }
@@ -436,7 +445,7 @@ export default async function handler(req: any, res: any) {
           ? [
               {
                 filename: pdfFileName,
-                content: pdfBuffer.toString("base64"),
+                content: pdfBuffer,
               },
             ]
           : [];
@@ -455,6 +464,7 @@ export default async function handler(req: any, res: any) {
             status: "resend_error",
             isRealDelivery: false,
             message: `Cổng Resend phản hồi: ${sendResult.error.message}`,
+            attachmentName: pdfFileName,
           });
         }
 
@@ -474,6 +484,7 @@ export default async function handler(req: any, res: any) {
           status: "resend_failed",
           isRealDelivery: false,
           message: resendCatchErr.message || "Lỗi khi gửi qua Resend",
+          attachmentName: pdfFileName,
         });
       }
     }

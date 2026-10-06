@@ -85,7 +85,7 @@ export const CeoReportView: React.FC<CeoReportViewProps> = ({ report, onBackToOv
 
   // Email Modal State
   const [isEmailModalOpen, setIsEmailModalOpen] = useState<boolean>(false);
-  const [emailInput, setEmailInput] = useState<string>('eduzteam09@gmail.com');
+  const [emailInput, setEmailInput] = useState<string>(profile.email || 'eduzteam09@gmail.com');
   const [receiverName, setReceiverName] = useState<string>(profile.ceoName || 'CEO');
   const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false);
   const [emailDeliveryResult, setEmailDeliveryResult] = useState<{

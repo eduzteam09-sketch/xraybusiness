@@ -148,35 +148,45 @@ async function startServer() {
       // 1. TẠO TỆP PDF VECTOR CHUẨN TIẾNG VIỆT CÓ DẤU 100% ĐÍNH KÈM THẬT SỰ
       let pdfBuffer: Buffer | null = null;
 
-      try {
-        console.log("[PDF] Đang tạo file PDF Executive chuẩn tiếng Việt có dấu 100% trên máy chủ...");
-        pdfBuffer = await generateExecutivePdfBuffer({
-          email,
-          receiverName,
-          businessName,
-          healthScore,
-          healthSummary: healthSummary || reportSummary,
-          threeKeyInsights,
-          ifOnlyOneThing,
-          ninetyDayPlan,
-          radarScores,
-          profile,
-          topBottlenecks,
-          bottlenecks,
-          pdfFileName,
-        });
-        console.log(`[PDF] Đã tạo PDF tiếng Việt có dấu thành công! Kích thước: ${pdfBuffer.length} bytes`);
-      } catch (pdfGenErr) {
-        console.error("[PDF] Lỗi khi tạo PDF máy chủ, chuyển sang dữ liệu từ client:", pdfGenErr);
-        if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 500) {
-          try {
-            const base64Clean = pdfBase64.includes("base64,")
-              ? pdfBase64.split("base64,")[1]
-              : pdfBase64;
-            pdfBuffer = Buffer.from(base64Clean, "base64");
-          } catch (parseErr) {
-            console.warn("[PDF] Lỗi giải mã pdfBase64 từ client:", parseErr);
+      // Ưu tiên giải mã PDF vector trực tiếp từ client gửi lên
+      if (pdfBase64 && typeof pdfBase64 === "string" && pdfBase64.length > 100) {
+        try {
+          let base64Clean = pdfBase64;
+          if (base64Clean.includes(";base64,")) {
+            base64Clean = base64Clean.split(";base64,")[1];
+          } else if (base64Clean.includes("base64,")) {
+            base64Clean = base64Clean.split("base64,")[1];
           }
+          base64Clean = base64Clean.replace(/\s+/g, "").trim();
+          pdfBuffer = Buffer.from(base64Clean, "base64");
+          console.log(`[PDF] Đã nhận PDF vector từ client! Kích thước: ${pdfBuffer.length} bytes`);
+        } catch (parseErr) {
+          console.warn("[PDF] Lỗi giải mã pdfBase64 từ client:", parseErr);
+        }
+      }
+
+      // Dự phòng tạo trên máy chủ nếu client chưa gửi
+      if (!pdfBuffer || pdfBuffer.length < 500) {
+        try {
+          console.log("[PDF] Đang tạo file PDF Executive chuẩn tiếng Việt có dấu 100% trên máy chủ...");
+          pdfBuffer = await generateExecutivePdfBuffer({
+            email,
+            receiverName,
+            businessName,
+            healthScore,
+            healthSummary: healthSummary || reportSummary,
+            threeKeyInsights,
+            ifOnlyOneThing,
+            ninetyDayPlan,
+            radarScores,
+            profile,
+            topBottlenecks,
+            bottlenecks,
+            pdfFileName,
+          });
+          console.log(`[PDF] Đã tạo PDF tiếng Việt có dấu trên máy chủ thành công! Kích thước: ${pdfBuffer.length} bytes`);
+        } catch (pdfGenErr) {
+          console.error("[PDF] Lỗi khi tạo PDF máy chủ:", pdfGenErr);
         }
       }
 

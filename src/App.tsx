@@ -2,34 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LandingHome } from './components/LandingHome';
-import { HomeOverview } from './components/HomeOverview';
 import { CheckupInterview } from './components/CheckupInterview';
-import { CanvasLiving } from './components/CanvasLiving';
-import { BottleneckMap } from './components/BottleneckMap';
+import { CeoRadarDiagram } from './components/CeoRadarDiagram';
 import { PositioningDifferentiation } from './components/PositioningDifferentiation';
-import { MoneyFlowView } from './components/MoneyFlowView';
-import { OpportunitiesView } from './components/OpportunitiesView';
-import { DigitalAIView } from './components/DigitalAIView';
-import { ActionPlan90DaysView } from './components/ActionPlan90DaysView';
+import { CanvasDiagramView } from './components/CanvasDiagramView';
+import { BottleneckDiagramView } from './components/BottleneckDiagramView';
+import { QuickWin90DaysView } from './components/QuickWin90DaysView';
 import { CeoReportView } from './components/CeoReportView';
 import { BusinessProfile, DiagnosisReport } from './types';
 import { HAI_HUONG_PROFILE, SAMPLE_PROFILES_LIST } from './data/sampleProfiles';
-import { Building2, ArrowRight, X, Sparkles } from 'lucide-react';
+import { Building2, X, Download, Mail, Sparkles, AlertTriangle } from 'lucide-react';
 
 export type ViewMode = 'home' | 'checkup' | 'results';
 
 export default function App() {
-  // Navigation & View Mode State
-  // Khi người dùng vào ban đầu:
-  // - Hoàn toàn không cần đăng nhập
-  // - KHÔNG thấy bất kỳ kết quả nào ở màn hình
-  // - Chỉ là thông tin giới thiệu về ứng dụng, hướng dẫn sử dụng, giá trị mang lại
-  // - 1 nút xem bản đồ kết quả mẫu
-  // - 1 nút bắt đầu khám doanh nghiệp
-  // - KHÔNG hiện menu bên trái (Menu chỉ hiện khi có kết quả)
-  // - Tone màu sáng, hiện đại, thanh lịch
   const [viewMode, setViewMode] = useState<ViewMode>('home');
-  const [currentTab, setCurrentTab] = useState<NavTab>('overview');
+  const [currentTab, setCurrentTab] = useState<NavTab>('differentiation');
   const [activeReport, setActiveReport] = useState<DiagnosisReport>(HAI_HUONG_PROFILE);
   const [isNewBusinessModalOpen, setIsNewBusinessModalOpen] = useState<boolean>(false);
 
@@ -41,7 +29,7 @@ export default function App() {
   }>({
     ceoName: '',
     businessName: '',
-    industry: '',
+    industry: 'Sản xuất & Thương mại',
   });
 
   // Load saved custom report from localStorage if exists
@@ -59,7 +47,6 @@ export default function App() {
     }
   }, []);
 
-  // Save active report to localStorage on change
   const updateActiveReport = (report: DiagnosisReport) => {
     setActiveReport(report);
     try {
@@ -81,8 +68,47 @@ export default function App() {
     }
   };
 
-  const handleStartNewCheckup = () => {
+  const handleStartNewCheckupFromLanding = (formData?: {
+    ceoName: string;
+    email: string;
+    businessName: string;
+    industry: string;
+  }) => {
+    if (formData && formData.businessName.trim()) {
+      const newProfile: BusinessProfile = {
+        id: `biz-${Date.now()}`,
+        ceoName: formData.ceoName.trim() || 'CEO',
+        email: formData.email.trim(),
+        businessName: formData.businessName.trim(),
+        industry: formData.industry.trim() || 'Kinh doanh & Dịch vụ',
+        currentTools: ['Zalo', 'Excel'],
+        createdAt: new Date().toISOString(),
+      };
+
+      const tempReport: DiagnosisReport = {
+        ...HAI_HUONG_PROFILE,
+        id: `diag-temp-${Date.now()}`,
+        profile: newProfile,
+        createdAt: new Date().toISOString(),
+      };
+
+      updateActiveReport(tempReport);
+      setViewMode('checkup');
+      return;
+    }
+
     setIsNewBusinessModalOpen(true);
+  };
+
+  const handleExploreSampleFromLanding = (profileId?: string) => {
+    if (profileId) {
+      const found = SAMPLE_PROFILES_LIST.find((s) => s.profile.id === profileId);
+      if (found) {
+        updateActiveReport(found);
+      }
+    }
+    setViewMode('results');
+    setCurrentTab('differentiation');
   };
 
   const handleConfirmNewBusiness = (e: React.FormEvent) => {
@@ -112,27 +138,15 @@ export default function App() {
 
   const handleDiagnosisComplete = (completedReport: DiagnosisReport) => {
     updateActiveReport(completedReport);
-    // Menu bên trái chỉ hiển thị khi có kết quả
     setViewMode('results');
-    setCurrentTab('overview');
-  };
-
-  const handleUpdatePlanStatus = (planId: string, status: 'done' | 'doing' | 'todo') => {
-    if (!activeReport) return;
-    const updatedPlans = activeReport.ninetyDayPlan.map((p) =>
-      p.id === planId ? { ...p, status } : p
-    );
-    updateActiveReport({ ...activeReport, ninetyDayPlan: updatedPlans });
+    setCurrentTab('differentiation');
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans antialiased">
       {/* 
-        CRITICAL REQUIREMENT:
-        - Ở màn hình TRANG CHỦ (home) và màn hình KHÁM DOANH NGHIỆP (checkup):
-          ĐỀU KHÔNG HIỆN MENU BÊN TRÁI.
-        - Menu bên trái CHỈ HIỂN THỊ KHI CÓ KẾT QUẢ (viewMode === 'results').
-        - Nền Menu màu sáng, thanh lịch, KHÔNG DÙNG NỀN ĐEN.
+        Menu bên trái chỉ hiển thị khi ở màn hình kết quả (viewMode === 'results').
+        Tone màu sáng, thanh lịch, chuẩn Neo-grotesque.
       */}
       {viewMode === 'results' && (
         <Sidebar
@@ -140,20 +154,20 @@ export default function App() {
           onSelectTab={(tab) => setCurrentTab(tab)}
           hasDiagnosis={Boolean(activeReport)}
           onBackToHome={() => setViewMode('home')}
-          onStartNewCheckup={() => setViewMode('checkup')}
+          onStartNewCheckup={() => setIsNewBusinessModalOpen(true)}
         />
       )}
 
-      {/* Main App Canvas */}
+      {/* Main Canvas */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
-        {/* Header is shown on Home and Results, hidden during focused Checkup */}
+        {/* Header hiển thị ở màn hình Kết Quả và Trang Chủ */}
         {viewMode !== 'checkup' && (
           <Header
             profile={activeReport.profile}
             healthScore={activeReport?.healthScore}
             viewMode={viewMode}
             onSelectSample={handleSelectSample}
-            onStartNewCheckup={handleStartNewCheckup}
+            onStartNewCheckup={() => setIsNewBusinessModalOpen(true)}
             onPrintReport={() => {
               setViewMode('results');
               setCurrentTab('report');
@@ -166,32 +180,17 @@ export default function App() {
           />
         )}
 
-        {/* Content Display based on ViewMode */}
+        {/* Content Router */}
         <main className="flex-1">
-          {/* 
-            1. MÀN HÌNH TRANG CHỦ (LANDING HOME):
-            - FULL MÀN HÌNH, KHÔNG CÓ MENU BÊN TRÁI.
-            - KHÔNG THẤY BẤT KỲ KẾT QUẢ NÀO CỦA DOANH NGHIỆP.
-            - Chỉ giới thiệu ứng dụng, hướng dẫn sử dụng, giá trị mang lại.
-            - Có 1 nút để xem bản đồ kết quả mẫu.
-            - Có nút chính "BẮT ĐẦU KHÁM DOANH NGHIỆP".
-            - Tone màu sáng, hiện đại, không dùng nền đen.
-          */}
+          {/* 1. MÀN HÌNH ĐÓN TIẾP & NHẬP THÔNG TIN CEO (LANDING INTAKE) */}
           {viewMode === 'home' && (
             <LandingHome
-              onStartCheckup={handleStartNewCheckup}
-              onExploreSample={() => {
-                setViewMode('results');
-                setCurrentTab('overview');
-              }}
+              onStartCheckup={handleStartNewCheckupFromLanding}
+              onExploreSample={handleExploreSampleFromLanding}
             />
           )}
 
-          {/* 
-            2. MÀN HÌNH KHÁM DOANH NGHIỆP:
-            - FULL MÀN HÌNH, KHÔNG CÓ MENU BÊN TRÁI.
-            - Phỏng vấn chuyên sâu 1-1 qua giọng nói hoặc bấm chọn nhanh.
-          */}
+          {/* 2. MÀN HÌNH PHỎNG VẤN CHẨN ĐOÁN (CHECKUP INTERVIEW) */}
           {viewMode === 'checkup' && (
             <CheckupInterview
               initialProfile={activeReport.profile}
@@ -200,25 +199,19 @@ export default function App() {
             />
           )}
 
-          {/* 
-            3. MÀN HÌNH KẾT QUẢ:
-            - MENU BÊN TRÁI HIỆN RA VỚI ĐỦ 9 HẠNG MỤC CHẨN ĐOÁN.
-            - Xem chi tiết bản đồ doanh nghiệp.
-          */}
+          {/* 3. MÀN HÌNH DASHBOARD ĐỒ HỌA KẾT QUẢ CHIẾN LƯỢC */}
           {viewMode === 'results' && (
-            <>
-              {/* Mobile Horizontal Module Switcher (Hiển thị trọn vẹn 9 tab trên màn hình di động) */}
+            <div className="space-y-6 pb-20">
+              
+              {/* Mobile Segmented Switcher (Thanh cuộn ngang trên di động) */}
               <div className="md:hidden bg-white border-b border-slate-200 px-3 py-2 overflow-x-auto flex items-center gap-1.5 scrollbar-none sticky top-14 z-20 shadow-2xs">
                 {[
-                  { id: 'overview' as NavTab, label: '01. Tổng quan' },
-                  { id: 'positioning' as NavTab, label: '02. Vị thế' },
-                  { id: 'canvas' as NavTab, label: '03. Canvas 9 ô' },
-                  { id: 'bottlenecks' as NavTab, label: '04. 5 Zone Nghẽn', isHot: true },
-                  { id: 'moneyflow' as NavTab, label: '05. Dòng tiền' },
-                  { id: 'opportunities' as NavTab, label: '06. Cơ hội' },
-                  { id: 'digital_ai' as NavTab, label: '07. Số hóa & AI' },
-                  { id: 'action_plan' as NavTab, label: '08. Kế hoạch 90N' },
-                  { id: 'report' as NavTab, label: '09. Báo cáo CEO', isSpecial: true },
+                  { id: 'differentiation' as NavTab, label: '01. Giá Trị & Khác Biệt' },
+                  { id: 'overview' as NavTab, label: '02. Radar Sức Khỏe' },
+                  { id: 'canvas' as NavTab, label: '03. Canvas 9 Ô' },
+                  { id: 'bottlenecks' as NavTab, label: '04. Bản Đồ 5 Zone', isHot: true },
+                  { id: 'action_plan' as NavTab, label: '05. Lộ Trình 90N' },
+                  { id: 'report' as NavTab, label: '06. Báo Cáo CEO & PDF', isSpecial: true },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -227,7 +220,7 @@ export default function App() {
                       currentTab === item.id
                         ? 'bg-blue-600 text-white shadow-xs'
                         : item.isSpecial
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        ? 'bg-slate-900 text-white border border-slate-800'
                         : item.isHot
                         ? 'bg-rose-50 text-rose-700 border border-rose-200'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -238,140 +231,169 @@ export default function App() {
                 ))}
               </div>
 
-              {currentTab === 'overview' && (
-                <HomeOverview
-                  report={activeReport}
-                  onStartCheckup={handleStartNewCheckup}
-                  onNavigateToTab={(tab) => setCurrentTab(tab as NavTab)}
-                />
-              )}
+              {/* TOP EXECUTIVE QUICK BAR CHO KẾT QUẢ */}
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                      <span className="text-xs font-black uppercase text-blue-700 tracking-wider">
+                        BẢN ĐỒ CHIẾN LƯỢC ĐIỀU HÀNH 2026
+                      </span>
+                    </div>
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                      {activeReport.profile.businessName} • CEO {activeReport.profile.ceoName || 'Lãnh Đạo'}
+                    </h2>
+                    <p className="text-[11px] text-slate-500">
+                      💡 Màn hình hiển thị các đồ họa trực quan cấp cao. Bấm nút bên phải để tải hồ sơ chi tiết A4 hoặc gửi về Email.
+                    </p>
+                  </div>
 
-              {currentTab === 'positioning' && (
-                <PositioningDifferentiation report={activeReport} />
-              )}
+                  {/* 2 Nút Hành Động Lớn */}
+                  <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                    <button
+                      onClick={() => setCurrentTab('report')}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 hover:scale-[1.01]"
+                    >
+                      <Download className="w-4 h-4 text-white" />
+                      <span>Tải Báo Cáo PDF Chi Tiết (A4)</span>
+                    </button>
 
-              {currentTab === 'canvas' && (
-                <CanvasLiving
-                  canvas={activeReport.canvas}
-                  businessName={activeReport.profile.businessName}
-                />
-              )}
+                    <button
+                      onClick={() => setCurrentTab('report')}
+                      className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 hover:scale-[1.01]"
+                    >
+                      <Mail className="w-4 h-4 text-blue-300" />
+                      <span>Gửi Báo Cáo Vào Email CEO</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-              {currentTab === 'bottlenecks' && <BottleneckMap report={activeReport} />}
+              {/* RENDER CÁC SƠ ĐỒ ĐỒ HỌA TRỰC QUAN NHƯ 5 HÌNH ẢNH */}
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                
+                {/* TAB 1: GIÁ TRỊ CỐT LÕI & ĐIỂM KHÁC BIỆT */}
+                {currentTab === 'differentiation' && (
+                  <PositioningDifferentiation report={activeReport} />
+                )}
 
-              {currentTab === 'moneyflow' && <MoneyFlowView report={activeReport} />}
+                {/* TAB 2: SƠ ĐỒ CHẨN ĐOÁN SỨC KHỎE TỔNG THỂ (RADAR 10 TRỤC) */}
+                {currentTab === 'overview' && (
+                  <CeoRadarDiagram report={activeReport} />
+                )}
 
-              {currentTab === 'opportunities' && <OpportunitiesView report={activeReport} />}
+                {/* TAB 3: MÔ HÌNH KINH DOANH CANVAS 9 Ô */}
+                {currentTab === 'canvas' && (
+                  <CanvasDiagramView report={activeReport} />
+                )}
 
-              {currentTab === 'digital_ai' && <DigitalAIView report={activeReport} />}
+                {/* TAB 4: BẢN ĐỒ ĐIỂM NGHẼN 5 ZONE VẬN HÀNH DÒNG TIỀN */}
+                {currentTab === 'bottlenecks' && (
+                  <BottleneckDiagramView report={activeReport} />
+                )}
 
-              {currentTab === 'action_plan' && (
-                <ActionPlan90DaysView
-                  report={activeReport}
-                  onUpdatePlanStatus={handleUpdatePlanStatus}
-                />
-              )}
+                {/* TAB 5: QUICK WIN 90 NGÀY & RE-PURCHASE ENGINE */}
+                {currentTab === 'action_plan' && (
+                  <QuickWin90DaysView report={activeReport} />
+                )}
 
-              {currentTab === 'report' && (
-                <CeoReportView
-                  report={activeReport}
-                  onBackToOverview={() => setCurrentTab('overview')}
-                />
-              )}
-            </>
+                {/* TAB 6: BÁO CÁO CHI TIẾT & XUẤT BẢN PDF / GỬI EMAIL */}
+                {currentTab === 'report' && (
+                  <CeoReportView
+                    report={activeReport}
+                    onBackToOverview={() => setCurrentTab('differentiation')}
+                  />
+                )}
+
+              </div>
+            </div>
           )}
         </main>
       </div>
 
-      {/* Modal: Khởi tạo doanh nghiệp mới để khám (Tone sáng, hiện đại) */}
+      {/* MODAL: KHÁM DOANH NGHIỆP MỚI */}
       {isNewBusinessModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
-                  <Building2 className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 animate-in zoom-in-95 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <Building2 className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">KHÁM DOANH NGHIỆP CỦA BẠN</h3>
-                  <p className="text-xs text-slate-500">Nhập 3 thông tin cơ bản để bắt đầu</p>
-                </div>
+                <h3 className="text-base font-black text-slate-900">KHÁM DOANH NGHIỆP MỚI</h3>
               </div>
               <button
                 onClick={() => setIsNewBusinessModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmNewBusiness} className="mt-4 space-y-4">
+            <form onSubmit={handleConfirmNewBusiness} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Tên của bạn (CEO / Chủ doanh nghiệp) <span className="text-rose-500">*</span>
+                  Tên của bạn (CEO / Lãnh đạo)
                 </label>
                 <input
                   type="text"
                   required
                   value={newBizForm.ceoName}
                   onChange={(e) => setNewBizForm({ ...newBizForm, ceoName: e.target.value })}
-                  placeholder="Ví dụ: Anh Hoàng / Chị Mai"
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-900 font-semibold"
+                  placeholder="Ví dụ: Anh Hoàng"
+                  className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-900"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Tên doanh nghiệp / Cơ sở kinh doanh <span className="text-rose-500">*</span>
+                  Tên Doanh Nghiệp
                 </label>
                 <input
                   type="text"
                   required
                   value={newBizForm.businessName}
                   onChange={(e) => setNewBizForm({ ...newBizForm, businessName: e.target.value })}
-                  placeholder="Ví dụ: Chuỗi Thời Trang An Bình, Nhà Thuốc Tâm An..."
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-900 font-semibold"
+                  placeholder="Ví dụ: Công ty Cổ phần Thực phẩm An Phú"
+                  className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-900"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Ngành nghề / Lĩnh vực hoạt động
+                  Ngành nghề hoạt động
                 </label>
                 <input
                   type="text"
+                  required
                   value={newBizForm.industry}
                   onChange={(e) => setNewBizForm({ ...newBizForm, industry: e.target.value })}
-                  placeholder="Ví dụ: Sản xuất thực phẩm, Dịch vụ F&B, Bán lẻ mỹ phẩm..."
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-900"
+                  placeholder="Ví dụ: Bán lẻ F&B / Công nghệ số"
+                  className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-900"
                 />
               </div>
 
-              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] text-blue-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Không cần mật khẩu hay đăng ký tài khoản. Kết quả được lưu trên thiết bị của bạn.</span>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsNewBusinessModalOpen(false)}
-                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 text-xs font-black text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-1.5 shadow-xs hover:scale-[1.02] transition-all"
+                  className="px-5 py-2.5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 >
-                  <span>Bắt đầu phỏng vấn AI</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  Bắt Đầu Phỏng Vấn Ngay
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

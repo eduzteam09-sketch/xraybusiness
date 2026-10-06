@@ -4,21 +4,15 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  ShieldAlert,
-  BarChart2,
+  ShieldCheck,
   TrendingUp,
   Sparkles,
+  ArrowRight,
+  Target,
+  Award,
+  Layers,
 } from 'lucide-react';
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts';
-import { DiagnosisReport, RadarScoreItem } from '../types';
+import { DiagnosisReport } from '../types';
 import { AiWhyModal } from './AiWhyModal';
 
 interface PositioningDifferentiationProps {
@@ -28,7 +22,9 @@ interface PositioningDifferentiationProps {
 export const PositioningDifferentiation: React.FC<PositioningDifferentiationProps> = ({
   report,
 }) => {
-  const { positioningSummary, differentiation, radarScores, profile } = report;
+  const { positioningSummary, differentiation, profile } = report;
+  const bName = profile.businessName || 'Doanh Nghiệp';
+
   const [modalData, setModalData] = useState<{
     isOpen: boolean;
     title: string;
@@ -48,230 +44,181 @@ export const PositioningDifferentiation: React.FC<PositioningDifferentiationProp
     confidence: 'high',
   });
 
-  // Radar data format
-  const radarChartData = radarScores.map((item) => ({
-    subject: item.subject,
-    score: item.score,
-    benchmark: item.benchmark,
-    fullText: item.vietnameseFull,
-  }));
-
-  const openRadarWhyModal = (item: RadarScoreItem) => {
+  const openDifferentiationModal = (item: any) => {
     setModalData({
       isOpen: true,
-      title: `${item.vietnameseFull} (Điểm: ${item.score}/5)`,
-      topic: 'Đánh giá năng lực chiến lược & rò rỉ dòng tiền',
+      title: `Kiểm chứng khác biệt: ${item.area}`,
+      topic: 'Đánh giá tính độc nhất & bằng chứng khách hàng tin tưởng',
       dataObserved: [
-        `Phân nhóm: ${item.category}`,
-        `Điểm doanh nghiệp: ${item.score}/5`,
-        `Điểm chuẩn trung bình ngành: ${item.benchmark}/5`,
+        `Khía cạnh: ${item.area}`,
+        `Hiện trạng: ${item.title || item.description}`,
+        `Bằng chứng thực tế: ${item.hasEvidence ? 'Đã kiểm chứng thực tế' : 'Chưa có bằng chứng đo lường'}`,
       ],
-      findings: item.note,
-      strategicRationale:
-        item.moneyLeakNotice ||
-        'Chỉ số này phản ánh khả năng chuyển đổi hoặc giữ chân khách hàng của doanh nghiệp.',
-      confidence: 'high',
-      actionAdvice:
-        item.score < 3
-          ? 'Cần đưa vào danh mục hành động cấp thiết trong kế hoạch 90 ngày.'
-          : 'Tiếp tục duy trì và biến thành tài sản truyền thông sắc bén.',
+      findings: item.description || item.evidenceNote,
+      strategicRationale: item.hasEvidence
+        ? 'Đây là lợi thế cạnh tranh thật sự cần khai thác triệt để trong các thông điệp bán hàng.'
+        : 'Nếu chỉ khác biệt trong suy nghĩ của CEO mà khách hàng không nhận ra thì chưa tạo thành tiền.',
+      confidence: item.hasEvidence ? 'high' : 'medium',
+      actionAdvice: item.hasEvidence
+        ? 'Đóng gói thành cam kết chất lượng độc quyền.'
+        : 'Cần bổ sung chứng nhận, thử nghiệm hoặc phản hồi khách hàng để chứng minh.',
     });
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-20">
-      {/* Title */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 mb-2">
-          <Compass className="w-3.5 h-3.5" />
-          Vị Thế & Điểm Khác Biệt Cốt Lõi
+    <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 font-sans">
+      
+      {/* 1. HEADER CHUẨN REFERO */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-5">
+        <div>
+          <div className="text-xs font-black uppercase tracking-wider text-blue-700 mb-1 flex items-center gap-1.5">
+            <Compass className="w-4 h-4 text-blue-600" />
+            <span>01. GIÁ TRỊ &amp; ĐỊNH VỊ CỐT LÕI</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Vị Thế Cạnh Tranh &amp; Điểm Khác Biệt
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Doanh nghiệp: <strong className="text-slate-900">{bName}</strong> • CEO: <strong className="text-slate-800">{profile.ceoName || 'Lãnh đạo'}</strong>
+          </p>
         </div>
-        <h2 className="text-xl font-black text-slate-900">
-          DOANH NGHIỆP CỦA BẠN ĐANG ĐỨNG Ở ĐÂU TRÊN THỊ TRƯỜNG?
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Khám phá định vị thực tế và kiểm chứng 5 khu vực khác biệt: bạn đang "tưởng mình khác biệt" hay "thực sự khác biệt trong mắt khách hàng"?
-        </p>
+
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded-2xl text-xs font-extrabold shrink-0 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-blue-600" />
+          <span>Kiểm Chứng 5 Khía Cạnh Cạnh Tranh</span>
+        </div>
       </div>
 
-      {/* 3 Blocks: Vị thế thị trường */}
+      {/* 2. TOP 3 STRATEGIC PILLARS (BENTO CARDS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-            01. Phân khúc thị trường
+        
+        {/* Khối 1: Phân Khúc Thị Trường */}
+        <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-2.5 flex flex-col justify-between shadow-xs">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-300">
+                01. VỊ TRÍ PHÂN KHÚC
+              </span>
+              <Target className="w-4 h-4 text-blue-400" />
+            </div>
+            <h3 className="text-base font-black text-white mt-1">
+              {positioningSummary?.marketLocation || 'Phân khúc trung & cao cấp'}
+            </h3>
           </div>
-          <div className="text-sm font-bold text-slate-900 leading-snug">
-            {positioningSummary.marketLocation}
-          </div>
+          <p className="text-xs text-slate-300 leading-relaxed font-medium">
+            Tập trung vào phân khúc coi trọng uy tín, chất lượng thật và giá trị sức khỏe bền vững.
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-            02. Khách hàng mục tiêu cốt lõi
+        {/* Khối 2: Khách Hàng Mục Tiêu Trả Tiền */}
+        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-2.5 flex flex-col justify-between shadow-xs">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                02. TỆP KHÁCH TẠO TIỀN
+              </span>
+              <Award className="w-4 h-4 text-amber-600" />
+            </div>
+            <h3 className="text-base font-black text-slate-900 mt-1">
+              {positioningSummary?.targetTier || 'Khách hàng quan tâm chất lượng'}
+            </h3>
           </div>
-          <div className="text-sm font-bold text-slate-900 leading-snug">
-            {positioningSummary.targetTier}
-          </div>
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            Tệp khách hàng sẵn sàng chi trả mức giá xứng đáng để đổi lấy sự yên tâm và cam kết minh bạch.
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-            03. Lợi thế khác biệt độc nhất
+        {/* Khối 3: Lợi Thế Cạnh Tranh Độc Nhất */}
+        <div className="bg-blue-50/70 rounded-2xl p-5 border border-blue-200 space-y-2.5 flex flex-col justify-between shadow-xs">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+                03. ĐÒN BẨY ĐỊNH VỊ
+              </span>
+              <Sparkles className="w-4 h-4 text-blue-600" />
+            </div>
+            <h3 className="text-base font-black text-blue-950 mt-1">
+              {positioningSummary?.competitiveStand || 'Chất lượng cốt lõi & Uy tín gia truyền'}
+            </h3>
           </div>
-          <div className="text-sm font-bold text-blue-700 leading-snug">
-            {positioningSummary.competitiveStand}
-          </div>
+          <p className="text-xs text-blue-900 leading-relaxed font-medium">
+            Lợi thế khác biệt không thể sao chép nhanh, là nền tảng để triển khai chuỗi Re-purchase 90 ngày.
+          </p>
         </div>
+
       </div>
 
-      {/* 5 Khu vực Khác biệt (Kiểm chứng bằng chứng) */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
+      {/* 3. MA TRẬN 5 KHÍA CẠNH KHÁC BIỆT CỦA DOANH NGHIỆP */}
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h3 className="text-base font-bold text-slate-900">
-              KIỂM CHỨNG 5 KHU VỰC KHÁC BIỆT
+            <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+              Bảng Đánh Giá 5 Khía Cạnh Khác Biệt
             </h3>
             <p className="text-xs text-slate-500">
-              Chỉ những khác biệt có bằng chứng được khách hàng thừa nhận mới tạo ra dòng tiền bền vững.
+              Kiểm chứng: Khác biệt thực tế đã được công nhận vs Khác biệt tiềm năng cần bổ sung bằng chứng.
             </p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {differentiation.map((item, idx) => (
-            <div
-              key={idx}
-              className={`p-4.5 rounded-xl border transition-all ${
-                item.hasEvidence
-                  ? 'bg-emerald-50/30 border-emerald-200 shadow-2xs'
-                  : 'bg-amber-50/30 border-amber-200'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  {item.area}
-                </span>
-
-                <div className="inline-flex items-center gap-1 text-[11px] font-semibold">
-                  {item.hasEvidence ? (
-                    <span className="text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Đã có bằng chứng
-                    </span>
-                  ) : (
-                    <span className="text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Chưa đủ bằng chứng
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <h4 className="text-xs font-bold text-slate-900 mb-1 leading-snug">{item.title}</h4>
-              <p className="text-xs text-slate-600 leading-relaxed mb-3">{item.description}</p>
-
-              <div className="pt-2 border-t border-slate-200/60 text-[11px]">
-                <span className="text-slate-400 font-medium">Kiểm chứng: </span>
-                <span className="font-medium text-slate-700">{item.evidenceNote}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* RADAR 10 TRỤC SỨC KHỎE (Chi tiết từ User Image 3) */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-bold bg-slate-100 text-slate-700 mb-1">
-              <BarChart2 className="w-3.5 h-3.5 text-blue-600" />
-              Ma Trận 10 Trục Năng Lực
-            </div>
-            <h3 className="text-base font-bold text-slate-900">
-              ĐÁNH GIÁ 10 TRỤC & ĐIỂM RÒ RỈ DÒNG TIỀN
-            </h3>
-            <p className="text-xs text-slate-500">
-              Điểm thấp ở bất kỳ trục nào cũng chỉ ra một lỗ hổng làm thất thoát doanh số.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-medium">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>
-              <span>Điểm thực tế (1 - 5)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-slate-300 inline-block"></span>
-              <span>Chuẩn ngành</span>
-            </div>
+          <div className="flex items-center gap-3 text-xs font-bold">
+            <span className="flex items-center gap-1.5 text-emerald-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Đã có bằng chứng
+            </span>
+            <span className="flex items-center gap-1.5 text-amber-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cần đo lường thêm
+            </span>
           </div>
         </div>
 
-        {/* Radar Chart Display */}
-        <div className="w-full h-80 sm:h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarChartData}>
-              <PolarGrid stroke="#e2e8f0" />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 11 }} />
-              <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <Radar
-                name="Điểm thực tế"
-                dataKey="score"
-                stroke="#2563eb"
-                fill="#3b82f6"
-                fillOpacity={0.4}
-              />
-              <Radar
-                name="Chuẩn ngành"
-                dataKey="benchmark"
-                stroke="#94a3b8"
-                fill="#cbd5e1"
-                fillOpacity={0.2}
-              />
-              <Tooltip
-                formatter={(val, name) => [`${val} / 5 điểm`, name]}
-                contentStyle={{ borderRadius: '8px', fontSize: '12px', borderColor: '#e2e8f0' }}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Bảng chi tiết 10 trục */}
-        <div className="mt-6 divide-y divide-slate-100 border-t border-slate-100">
-          {radarScores.map((item, idx) => {
-            const isLeak = item.score <= 2;
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5">
+          {differentiation.map((item, idx) => {
+            const hasEv = item.hasEvidence;
 
             return (
               <div
                 key={idx}
-                className={`py-3 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                  isLeak ? 'bg-rose-50/30' : ''
+                onClick={() => openDifferentiationModal(item)}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 hover:shadow-md hover:scale-[1.01] ${
+                  hasEv
+                    ? 'bg-white border-emerald-200 hover:border-emerald-400'
+                    : 'bg-white border-amber-200 hover:border-amber-400'
                 }`}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">{item.vietnameseFull}</span>
-                    {isLeak && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
-                        ⚠️ RÒ RỈ DÒNG TIỀN
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      0{idx + 1}. {item.area}
+                    </span>
+                    {hasEv ? (
+                      <span className="p-1 rounded-lg bg-emerald-100 text-emerald-800">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </span>
+                    ) : (
+                      <span className="p-1 rounded-lg bg-amber-100 text-amber-800">
+                        <AlertCircle className="w-3.5 h-3.5" />
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{item.note}</p>
+
+                  <h4 className="text-xs font-black text-slate-900 line-clamp-2">
+                    {item.title}
+                  </h4>
+                  
+                  <p className="text-[11px] text-slate-600 mt-1 line-clamp-3 leading-snug">
+                    {item.description}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                  <div className="text-right">
-                    <div className="text-xs font-black text-blue-700">{item.score} / 5 điểm</div>
-                    <div className="text-[10px] text-slate-400">Chuẩn: {item.benchmark}</div>
-                  </div>
-
-                  <button
-                    onClick={() => openRadarWhyModal(item)}
-                    className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                  <span
+                    className={`font-black ${
+                      hasEv ? 'text-emerald-700' : 'text-amber-700'
+                    }`}
                   >
-                    <HelpCircle className="w-4 h-4" />
-                  </button>
+                    {hasEv ? '✓ Khác biệt thật' : '⚠ Cần bằng chứng'}
+                  </span>
+                  <span className="text-slate-400 group-hover:text-blue-600 font-bold">
+                    Chi tiết →
+                  </span>
                 </div>
               </div>
             );
@@ -279,7 +226,7 @@ export const PositioningDifferentiation: React.FC<PositioningDifferentiationProp
         </div>
       </div>
 
-      {/* Ai Why Modal */}
+      {/* MODAL CHI TIẾT */}
       <AiWhyModal
         isOpen={modalData.isOpen}
         onClose={() => setModalData({ ...modalData, isOpen: false })}
@@ -291,6 +238,7 @@ export const PositioningDifferentiation: React.FC<PositioningDifferentiationProp
         confidence={modalData.confidence}
         actionAdvice={modalData.actionAdvice}
       />
+
     </div>
   );
 };

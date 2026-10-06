@@ -1,6 +1,7 @@
 export interface BusinessProfile {
   id: string;
   ceoName: string;
+  email?: string;
   businessName: string;
   industry: string;
   yearsInBusiness?: string;
