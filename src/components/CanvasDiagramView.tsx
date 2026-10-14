@@ -11,6 +11,7 @@ import {
   Coins,
   ArrowUp,
   Grid,
+  Sparkles,
 } from 'lucide-react';
 import { DiagnosisReport } from '../types';
 
@@ -20,7 +21,65 @@ interface CanvasDiagramViewProps {
 
 export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) => {
   const profile = report.profile;
-  const bName = profile.businessName || 'Doanh Nghiệp';
+  const bName = profile.businessName || 'Nước Mắm Hải Hương';
+  const canvas = report.canvas;
+
+  // Trích xuất an toàn dữ liệu từ canvas của báo cáo chuẩn
+  const keyPartners = canvas?.keyPartners?.current || [
+    'Hợp tác xã ngư dân đánh bắt ven biển (Cá cơm than nguyên chất)',
+    'Nhà cung cấp chai thủy tinh cao cấp & nhãn in tem QR',
+    'Mạng lưới đại lý chợ truyền thống & chuỗi thực phẩm sạch',
+  ];
+
+  const keyActivities = canvas?.keyActivities?.current || [
+    'Thu mua cá cơm tươi tại cảng & kiểm soát tỷ lệ muối 3:1',
+    'Chăm sóc ủ chượp thùng gỗ bời lời, kéo rút nước mắm nhĩ 18 tháng',
+    'Đóng chai tem nhãn QR và phân phối tới đại lý/khách hàng',
+  ];
+
+  const keyResources = canvas?.keyResources?.current || [
+    'Nhà thùng ủ chượp truyền thống hơn 100 thùng gỗ bời lời',
+    'Bí quyết công thức gia truyền 3 đời & chứng nhận OCOP 4 sao',
+    'Tài sản số hóa: Danh sách khách hàng và Zalo OA Bếp Việt',
+  ];
+
+  const valuePropositions = canvas?.valuePropositions?.current || [
+    'Nước mắm cá cơm than truyền thống 35N - 42N nguyên chất 100%',
+    'An toàn tuyệt đối không chất bảo quản công nghiệp, đậm vị truyền thống',
+    'Hành trình ẩm thực Bếp Việt: Combo kho - nấu - chấm tiện lợi',
+  ];
+
+  const customerRelationships = canvas?.customerRelationships?.current || [
+    'Giao dịch mua lẻ tại điểm bán & gian hàng trực tuyến',
+    'Cơ chế Re-Purchase: Nhắc mua lại tự động qua Zalo OA chu kỳ 45-60 ngày',
+    'Câu lạc bộ Yêu Bếp Việt: Tích điểm tri ân & tặng công thức món ngon',
+  ];
+
+  const channels = canvas?.channels?.current || [
+    'Đại lý truyền thống, tạp hóa & chợ đầu mối địa phương',
+    'Kênh trực tiếp D2C qua Zalo OA & Quét mã QR trên nhãn chai',
+    'Sàn TMĐT Shopee/Lazada & Kênh quà biếu doanh nghiệp',
+  ];
+
+  const customerSegments = canvas?.customerSegments?.current || [
+    'Hộ gia đình nội trợ coi trọng bữa ăn an toàn và sức khỏe con trẻ',
+    'Các nhà hàng món Việt truyền thống, bếp ăn cao cấp sành ăn',
+    'Doanh nghiệp & khách du lịch mua làm quà biếu đặc sản lễ Tết',
+  ];
+
+  const costStructure = canvas?.costStructure?.current || [
+    'Chi phí nguyên liệu cá cơm tươi & muối sạch tự nhiên (45%)',
+    'Chiết khấu đại lý trung gian và phí vận chuyển đường bộ (25%)',
+    'Chi phí nhân công nhà thùng, đóng chai và vật tư bao bì (20%)',
+    'Chi phí nền tảng số hóa Zalo OA và tem QR Code (10%)',
+  ];
+
+  const revenueStreams = canvas?.revenueStreams?.current || [
+    'Bán lẻ trực tiếp từng chai nước mắm nguyên chất (35N, 40N, 42N)',
+    'Đơn hàng bán sỉ định kỳ cho đại lý và cửa hàng đặc sản',
+    'Combo gia vị Bếp Việt & Gói thuê bao giao nước mắm định kỳ 6 tháng',
+    'Set quà biếu Tết doanh nghiệp cao cấp biên lợi nhuận gộp 55%',
+  ];
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-7 lg:p-9 space-y-6">
@@ -36,12 +95,13 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
             Mô Hình Kinh Doanh Tái Cấu Trúc — {bName}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Mô hình trực quan: Đóng gói liên minh, số hóa quy trình và mở rộng kênh phân phối.
+            Đồng bộ toàn diện giữa năng lực ủ chượp truyền thống và cỗ máy tăng trưởng trực tiếp D2C số hóa.
           </p>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2 rounded-2xl text-xs font-extrabold shrink-0">
-          ⚡ Trực Quan Hóa 9 Khối Cốt Lõi
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2 rounded-2xl text-xs font-extrabold shrink-0 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-600" />
+          <span>Trực Quan Hóa 9 Khối Cốt Lõi</span>
         </div>
       </div>
 
@@ -51,11 +111,11 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
         {/* Callout Trái (Đỏ/Hồng) */}
         <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-950 flex flex-col items-center justify-center shadow-2xs">
           <div className="text-xs font-black uppercase tracking-tight">
-            Liên Minh, R&amp;D &amp; Phát Triển Thị Trường
+            Nguồn Cung Cá Cơm &amp; Bí Quyết Ủ Chượp
           </div>
           <div className="mt-1 flex items-center gap-1 text-rose-700 font-extrabold text-[11px]">
             <ArrowUp className="w-3.5 h-3.5" />
-            <span>Đòn Bẩy Mở Rộng Quy Mô</span>
+            <span>Nền Tảng Cốt Lõi Làng Nghề</span>
           </div>
         </div>
 
@@ -63,24 +123,24 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
         <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 flex flex-col items-center justify-center shadow-2xs">
           <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">TRỌNG TÂM CHIẾN LƯỢC</span>
           <div className="text-xs sm:text-sm font-black uppercase tracking-tight text-amber-950 mt-0.5">
-            GIẢI PHÁP KINH DOANH SỐ &amp; AI
+            GIẢI PHÁP BẾP VIỆT &amp; RE-PURCHASE
           </div>
         </div>
 
         {/* Callout Phải (Xanh Lá) */}
         <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex flex-col items-center justify-center shadow-2xs">
           <div className="text-xs font-black uppercase tracking-tight">
-            Mạng Lưới Phân Phối Đa Tỉnh Thành
+            Mở Rộng Kênh Trực Tiếp D2C &amp; Khách Quen
           </div>
           <div className="mt-1 flex items-center gap-1 text-emerald-700 font-extrabold text-[11px]">
             <ArrowUp className="w-3.5 h-3.5" />
-            <span>Phân Phối Đa Kênh Điểm Chạm</span>
+            <span>Đòn Bẩy Dòng Tiền Tự Động</span>
           </div>
         </div>
 
       </div>
 
-      {/* 3. KHUNG CANVAS 9 Ô LỚN VỚI 3 MẢNG MÀU CHUẨN XANH - VÀNG - HỒNG */}
+      {/* 3. KHUNG CANVAS 9 Ô LỚN VỚI PHÂN VÙNG MÀU CHUẨN XANH - VÀNG - HỒNG */}
       <div className="border-2 border-slate-800 rounded-3xl overflow-hidden shadow-sm">
         
         {/* HÀNG TRÊN: 5 CỘT (RESPONSIVE CHO TABLET & MOBILE) */}
@@ -99,21 +159,19 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
                 </div>
               </div>
 
-              <div className="mt-3 space-y-2.5 text-xs text-slate-800">
-                <div className="p-2.5 bg-white/85 rounded-xl border border-blue-200 space-y-0.5">
-                  <div className="font-black text-blue-950 text-[11px]">🏛️ Trường Đại Học &amp; Viện:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">Đội ngũ sinh viên khởi nghiệp, nghiên cứu &amp; đại sứ thương hiệu.</p>
-                </div>
-
-                <div className="p-2.5 bg-white/85 rounded-xl border border-blue-200 space-y-0.5">
-                  <div className="font-black text-blue-950 text-[11px]">🤝 Liên Minh Doanh Nghiệp:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">CLB Doanh nhân, Hiệp hội ngành, mạng lưới bán chéo sản phẩm.</p>
-                </div>
+              <div className="mt-3 space-y-2 text-xs text-slate-800">
+                {keyPartners.map((item, idx) => (
+                  <div key={idx} className="p-2.5 bg-white/85 rounded-xl border border-blue-200 space-y-0.5">
+                    <p className="text-[11px] text-slate-800 font-medium leading-snug">
+                      • {item}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="text-[10px] font-extrabold text-blue-900 bg-blue-200/70 p-1.5 rounded-lg text-center">
-              Tối ưu chi phí R&amp;D &amp; Tiếp cận nhanh
+              Bảo chứng nguồn cá &amp; Chuỗi cung ứng
             </div>
           </div>
 
@@ -133,14 +191,11 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
 
               <div className="space-y-1.5 text-[11px] text-slate-800 pt-1 font-medium">
-                <div className="p-2 bg-white/85 rounded-xl border border-amber-200">
-                  <div className="font-bold text-amber-950">• Số hóa &amp; Tự động hóa:</div>
-                  <span className="text-slate-700">Quy trình bán hàng, đóng gói combo và chăm sóc tự động.</span>
-                </div>
-                <div className="p-2 bg-white/85 rounded-xl border border-amber-200">
-                  <div className="font-bold text-amber-950">• Đào tạo đội ngũ:</div>
-                  <span className="text-slate-700">Chuẩn hóa SOP hướng dẫn bán hàng đa kênh.</span>
-                </div>
+                {keyActivities.map((act, idx) => (
+                  <div key={idx} className="p-2 bg-white/85 rounded-xl border border-amber-200">
+                    <span className="text-slate-800">• {act}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -157,12 +212,11 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
 
               <div className="space-y-1.5 text-[11px] text-slate-800 pt-1 font-medium">
-                <div className="p-2 bg-white/85 rounded-xl border border-amber-200">
-                  <span className="font-bold text-amber-950">• Nền tảng số &amp; CRM:</span> Dữ liệu khách hàng quen.
-                </div>
-                <div className="p-2 bg-white/85 rounded-xl border border-amber-200">
-                  <span className="font-bold text-amber-950">• Công thức chất lượng:</span> Lợi thế cốt lõi.
-                </div>
+                {keyResources.map((res, idx) => (
+                  <div key={idx} className="p-2 bg-white/85 rounded-xl border border-amber-200">
+                    <span className="text-slate-800">• {res}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -182,25 +236,18 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
 
               <div className="mt-3 space-y-2 text-xs text-slate-800">
-                <div className="p-2.5 bg-white/90 rounded-xl border border-orange-200 space-y-1">
-                  <div className="font-black text-orange-950 text-[11px]">✨ Sản Phẩm Chuẩn Vị:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">Chất lượng thật, an toàn sức khỏe, minh bạch nguồn gốc.</p>
-                </div>
-
-                <div className="p-2.5 bg-white/90 rounded-xl border border-orange-200 space-y-1">
-                  <div className="font-black text-orange-950 text-[11px]">🎁 Đóng Gói Combo Giá Trị:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">Giải pháp quà biếu tinh tế và combo tiết kiệm cho gia đình.</p>
-                </div>
-
-                <div className="p-2.5 bg-white/90 rounded-xl border border-orange-200 space-y-1">
-                  <div className="font-black text-orange-950 text-[11px]">⚡ Trải Nghiệm Tiện Lợi:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">Giao hàng nhanh, nhắc mua lại đúng chu kỳ tiêu dùng.</p>
-                </div>
+                {valuePropositions.map((val, idx) => (
+                  <div key={idx} className="p-2.5 bg-white/90 rounded-xl border border-orange-200 space-y-0.5">
+                    <p className="text-[11px] text-slate-800 font-bold leading-snug">
+                      ✨ {val}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="text-[10px] font-black text-orange-950 bg-orange-200 p-2 rounded-xl text-center shadow-2xs">
-              🌟 TRỌNG TÂM TẠO DOANH THU &amp; BIÊN LỢI NHUẬN
+              🌟 TRỌNG TÂM ĐỘ ĐẠM NGUYÊN CHẤT &amp; VỊ NGON TRUYỀN THỐNG
             </div>
           </div>
 
@@ -220,12 +267,11 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
 
               <div className="space-y-1.5 text-[11px] text-slate-800 pt-1 font-medium">
-                <div className="p-2 bg-white/85 rounded-xl border border-rose-200">
-                  <span className="font-bold text-rose-950">• Re-purchase Engine:</span> Nhắc mua tự động định kỳ.
-                </div>
-                <div className="p-2 bg-white/85 rounded-xl border border-rose-200">
-                  <span className="font-bold text-rose-950">• Chăm sóc thân thiết:</span> Ưu đãi độc quyền tri ân.
-                </div>
+                {customerRelationships.map((cr, idx) => (
+                  <div key={idx} className="p-2 bg-white/85 rounded-xl border border-rose-200">
+                    <span className="text-slate-800">• {cr}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -236,18 +282,17 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
                   <Truck className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black text-slate-900 uppercase">KÊNH PHÂN PHỐI</h3>
+                  <h3 className="text-xs font-black text-slate-900 uppercase">KÊNH TIẾP CẬN</h3>
                   <span className="text-[10px] font-bold text-rose-800">Channels</span>
                 </div>
               </div>
 
               <div className="space-y-1.5 text-[11px] text-slate-800 pt-1 font-medium">
-                <div className="p-2 bg-white/85 rounded-xl border border-rose-200">
-                  <span className="font-bold text-rose-950">• Kênh Online:</span> Website, Zalo OA, TikTok Shop.
-                </div>
-                <div className="p-2 bg-white/85 rounded-xl border border-rose-200">
-                  <span className="font-bold text-rose-950">• Kênh Đối tác:</span> Đại lý liên minh địa phương.
-                </div>
+                {channels.map((ch, idx) => (
+                  <div key={idx} className="p-2 bg-white/85 rounded-xl border border-rose-200">
+                    <span className="text-slate-800">• {ch}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -267,20 +312,18 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
 
               <div className="mt-3 space-y-2 text-xs text-slate-800">
-                <div className="p-2.5 bg-white/85 rounded-xl border border-rose-200 space-y-0.5">
-                  <div className="font-black text-rose-950 text-[11px]">👨‍👩‍👧 Gia Đình Sành Ăn:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">Ưu tiên bữa ăn dinh dưỡng, an toàn và ngon miệng.</p>
-                </div>
-
-                <div className="p-2.5 bg-white/85 rounded-xl border border-rose-200 space-y-0.5">
-                  <div className="font-black text-rose-950 text-[11px]">🏢 Khách Hàng B2B &amp; Quà Biếu:</div>
-                  <p className="text-[11px] text-slate-700 leading-snug">Doanh nghiệp đặt hộp quà Tết, hội nghị và đối tác.</p>
-                </div>
+                {customerSegments.map((cs, idx) => (
+                  <div key={idx} className="p-2.5 bg-white/85 rounded-xl border border-rose-200 space-y-0.5">
+                    <p className="text-[11px] text-slate-800 font-medium leading-snug">
+                      • {cs}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="text-[10px] font-extrabold text-rose-900 bg-rose-200/70 p-1.5 rounded-lg text-center">
-              Khách hàng trả tiền ổn định lâu dài
+              Khách hàng gia đình &amp; Đối tác trung thành
             </div>
           </div>
 
@@ -301,19 +344,12 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-slate-700 pt-1">
-              <div className="p-2 bg-white rounded-xl border border-slate-200">
-                <span className="font-bold text-slate-900">• Chi phí sản xuất &amp; R&amp;D</span>
-              </div>
-              <div className="p-2 bg-white rounded-xl border border-slate-200">
-                <span className="font-bold text-slate-900">• Chi phí vận hành &amp; Đóng gói</span>
-              </div>
-              <div className="p-2 bg-white rounded-xl border border-slate-200">
-                <span className="font-bold text-slate-900">• Chi phí nền tảng số CRM/AI</span>
-              </div>
-              <div className="p-2 bg-white rounded-xl border border-slate-200">
-                <span className="font-bold text-slate-900">• Hoa hồng đối tác liên minh</span>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-medium text-slate-700 pt-1">
+              {costStructure.map((cost, idx) => (
+                <div key={idx} className="p-2 bg-white rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-900">• {cost}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -329,19 +365,12 @@ export const CanvasDiagramView: React.FC<CanvasDiagramViewProps> = ({ report }) 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-slate-800 pt-1">
-              <div className="p-2 bg-white rounded-xl border border-emerald-200">
-                <span className="font-bold text-emerald-950">💵 Bán lẻ trực tiếp định kỳ</span>
-              </div>
-              <div className="p-2 bg-white rounded-xl border border-emerald-200">
-                <span className="font-bold text-emerald-950">📦 Đóng gói combo giá trị cao</span>
-              </div>
-              <div className="p-2 bg-white rounded-xl border border-emerald-200">
-                <span className="font-bold text-emerald-950">🤝 Doanh số mạng lưới đại lý</span>
-              </div>
-              <div className="p-2 bg-white rounded-xl border border-emerald-200">
-                <span className="font-bold text-emerald-950">🎁 Đơn hàng B2B quà tặng mùa vụ</span>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-medium text-slate-800 pt-1">
+              {revenueStreams.map((rev, idx) => (
+                <div key={idx} className="p-2 bg-white rounded-xl border border-emerald-200">
+                  <span className="font-bold text-emerald-950">💵 {rev}</span>
+                </div>
+              ))}
             </div>
           </div>
 

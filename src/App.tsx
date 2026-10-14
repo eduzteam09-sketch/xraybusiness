@@ -64,10 +64,10 @@ export default function App() {
       return;
     }
 
-    const found = SAMPLE_PROFILES_LIST.find((s) => s.profile.id === profileId);
-    if (found) {
-      updateActiveReport(found);
-    }
+    // Luôn tải chính xác hồ sơ chuẩn Nước Mắm Hải Hương
+    updateActiveReport(HAI_HUONG_PROFILE);
+    setViewMode('results');
+    setCurrentTab('differentiation');
   };
 
   const handleStartNewCheckupFromLanding = (formData?: {
@@ -103,12 +103,8 @@ export default function App() {
   };
 
   const handleExploreSampleFromLanding = (profileId?: string) => {
-    if (profileId) {
-      const found = SAMPLE_PROFILES_LIST.find((s) => s.profile.id === profileId);
-      if (found) {
-        updateActiveReport(found);
-      }
-    }
+    // Luôn tải chính xác hồ sơ chuẩn Nước Mắm Hải Hương
+    updateActiveReport(HAI_HUONG_PROFILE);
     setViewMode('results');
     setCurrentTab('differentiation');
   };
@@ -192,7 +188,7 @@ export default function App() {
 
         {/* 3. MÀN HÌNH DASHBOARD ĐỒ HỌA KẾT QUẢ CHIẾN LƯỢC: TOÀN BỘ TAB ĐƯỢC MỞ RỘNG TOÀN CHIỀU NGANG THOÁNG ĐÃNG */}
         {viewMode === 'results' && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24">
             
             {/* Render trực tiếp tab được chọn toàn màn hình, không cố định các khối thừa gây chật chội */}
             {currentTab === 'differentiation' && (

@@ -110,29 +110,19 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
                 </div>
               </div>
 
-              {/* Quick sample buttons for fast testing */}
-              <div className="pt-2 flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-slate-400 font-bold">Thử nhanh hồ sơ mẫu:</span>
+              {/* Quick sample button for Nước Mắm Hải Hương */}
+              <div className="pt-2 flex items-center gap-2.5 flex-wrap">
+                <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Hồ sơ chẩn đoán chuẩn mực:</span>
+                </span>
                 <button
                   type="button"
                   onClick={() => onExploreSample('hai-huong')}
-                  className="px-3 py-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 text-xs font-bold border border-blue-400/30 transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black border border-blue-400/30 shadow-md shadow-blue-500/20 transition-all hover:scale-[1.02] cursor-pointer flex items-center gap-2"
                 >
-                  Nước Mắm Hải Hương →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onExploreSample('ca-phe-moc')}
-                  className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-bold border border-amber-400/30 transition-all cursor-pointer"
-                >
-                  Cà Phê Mộc →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onExploreSample('thoi-trang-eva')}
-                  className="px-3 py-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 text-xs font-bold border border-purple-400/30 transition-all cursor-pointer"
-                >
-                  Chuỗi Thời Trang →
+                  <span>Nước Mắm Hải Hương (OCOP 4 Sao)</span>
+                  <span className="text-amber-300 font-bold">→ Xem Báo Cáo</span>
                 </button>
               </div>
 

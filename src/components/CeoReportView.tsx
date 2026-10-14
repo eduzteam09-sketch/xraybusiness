@@ -551,7 +551,7 @@ export const CeoReportView: React.FC<CeoReportViewProps> = ({ report, onBackToOv
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
 
       {/* TOP NOTIFICATION MESSAGES */}
       {pdfSuccessMessage && (
@@ -567,29 +567,32 @@ export const CeoReportView: React.FC<CeoReportViewProps> = ({ report, onBackToOv
       )}
 
       {/* 1. EXECUTIVE ACTION BANNER - NỔI BẬT DÀNH CHO CEO */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="space-y-1.5 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-blue-500/20 text-blue-300 border border-blue-400/30">
-            <Sparkles className="w-3 h-3 text-amber-300" />
-            Báo Cáo Chiến Lược Điều Hành CEO 2026
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-2 max-w-xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span>Báo Cáo Chiến Lược Điều Hành CEO 2026</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            {profile.businessName} • Hồ Sơ Độc Quyền
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2.5">
+            <span className="text-white break-words">{profile.businessName}</span>
+            <span className="text-xs sm:text-sm font-extrabold text-blue-300 uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-900/60 border border-blue-500/30 self-start sm:self-auto">
+              Hồ Sơ Độc Quyền
+            </span>
           </h1>
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
             👔 <strong>Dành riêng cho CEO</strong>: Toàn bộ hồ sơ phân tích sâu 10 trang, bảng đánh giá định lượng 10 năng lực và lộ trình chiến lược chi tiết được đính kèm trọn vẹn trong tệp PDF vector A4 độ phân giải cao.
           </p>
         </div>
 
         {/* NÚT HÀNH ĐỘNG CHÍNH - XUẤT BÁO CÁO PDF A4 */}
-        <div className="flex items-center shrink-0">
+        <div className="flex items-center shrink-0 w-full md:w-auto pt-1 sm:pt-0">
           <button
             onClick={handleDownloadPdf}
             disabled={isGeneratingPdf}
-            className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm rounded-2xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl hover:scale-[1.01] flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
+            className="w-full md:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm rounded-2xl transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer whitespace-nowrap"
           >
-            <Download className="w-4 h-4 text-white" />
-            <span>{isGeneratingPdf ? 'Đang tạo tệp PDF vector...' : 'Tải Toàn Bộ Báo Cáo PDF (A4)'}</span>
+            <Download className="w-4 h-4 text-white shrink-0" />
+            <span>{isGeneratingPdf ? 'Đang tạo tệp PDF vector...' : 'Tải Báo Cáo PDF (A4)'}</span>
           </button>
         </div>
       </div>

@@ -173,8 +173,8 @@ export const Header: React.FC<HeaderProps> = ({
       {/* 2. SUB-HEADER FLOATING NAVIGATION PILL (TABLET & MOBILE OPTIMIZED) */}
       {viewMode === 'results' && (
         <div className="bg-[#0b132b]/95 backdrop-blur-md py-2 px-2 sm:px-6 border-b border-slate-800/80">
-          <div className="max-w-5xl mx-auto flex items-center justify-center">
-            <div className="w-full sm:w-auto bg-white/95 backdrop-blur-sm rounded-2xl p-1 sm:p-1.5 shadow-xl border border-slate-200/90 flex items-center gap-1 overflow-x-auto scrollbar-none snap-x touch-pan-x">
+          <div className="max-w-5xl mx-auto flex items-center justify-start sm:justify-center overflow-x-auto no-scrollbar scroll-smooth">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-1 sm:p-1.5 shadow-xl border border-slate-200/90 flex items-center gap-1 shrink-0 snap-x touch-pan-x">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentTab === item.id;
@@ -183,7 +183,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     key={item.id}
                     onClick={() => onSelectTab && onSelectTab(item.id)}
-                    className={`whitespace-nowrap px-2.5 sm:px-4 py-2 rounded-xl text-xs transition-all shrink-0 flex items-center gap-1.5 sm:gap-2 cursor-pointer snap-start ${
+                    className={`whitespace-nowrap px-3 sm:px-4 py-2 rounded-xl text-xs transition-all shrink-0 flex items-center gap-1.5 sm:gap-2 cursor-pointer snap-start ${
                       isActive
                         ? 'bg-[#0b132b] text-white shadow-md scale-[1.02] font-black'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-bold'
