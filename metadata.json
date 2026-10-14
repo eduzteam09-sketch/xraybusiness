@@ -1,0 +1,10 @@
+{
+  "name": "AI Business Health Checkup",
+  "description": "Bản đồ sức khỏe doanh nghiệp & chẩn đoán chiến lược 90 ngày dành cho CEO",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
