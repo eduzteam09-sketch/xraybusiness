@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Mic,
-  MicOff,
   Send,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
   Building2,
   Users,
   Target,
@@ -14,13 +12,12 @@ import {
   Award,
   Zap,
   Flame,
-  ShieldCheck,
   ArrowLeft,
   Volume2,
   VolumeX,
   MessageSquare,
   Radio,
-  Clock,
+  RotateCcw,
   Loader2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -45,34 +42,27 @@ const STRATEGIC_PILLARS = [
   { id: 6, title: '06. Đột phá 90 ngày', short: 'Đột phá 90N', desc: 'Ưu tiên số hóa & Tăng trưởng', icon: Layers },
 ];
 
-const COMMON_PAIN_POINTS = [
-  { label: '📉 Khách mua 1 lần rồi thôi', text: 'Khách hàng mua một lần rồi ít khi quay lại, chi phí tìm khách mới ngày càng cao.' },
-  { label: '💰 Chi phí ads tăng phi mã', text: 'Chi phí quảng cáo Facebook/TikTok tăng nhanh làm bào mòn biên lợi nhuận.' },
-  { label: '⏳ CEO ôm đồm mọi việc', text: 'Việc gì cũng tới tay CEO, nhân viên thiếu chủ động, thiếu quy trình chuẩn SOP.' },
-  { label: '📦 Đọng vốn hàng tồn/công nợ', text: 'Dòng tiền mặt bị kẹt ở công nợ đại lý và hàng tồn kho quay vòng chậm.' },
-  { label: '👥 Nhân sự thiếu chủ động', text: 'Đội ngũ làm việc bị động, chưa có người gánh vác các vị trí chủ chốt.' },
-  { label: '📊 Quản lý thủ công/chưa có CRM', text: 'Dữ liệu khách hàng còn phân tán ở sổ sách và Excel, chưa có hệ thống tự động chăm sóc.' },
-];
-
 export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
   initialProfile,
   onDiagnosisComplete,
   onCancel,
 }) => {
-  // Mode selectors: Kênh tương tác (Chat / Voice) & Mức độ tương tác (Tiêu chuẩn / Chuyên sâu)
+  const [profile] = useState<BusinessProfile>(initialProfile);
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isDrillDown, setIsDrillDown] = useState<boolean>(false);
+  const [dataConfidence, setDataConfidence] = useState<number>(20);
+
+  // Interaction options
   const [channel, setChannel] = useState<InteractionChannel>('chat');
   const [depth, setDepth] = useState<InteractionDepth>('standard');
 
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [profile] = useState<BusinessProfile>(initialProfile);
-  const [isDrillDown, setIsDrillDown] = useState<boolean>(false);
-  const [dataConfidence, setDataConfidence] = useState<number>(25);
   const [detectedBottlenecks, setDetectedBottlenecks] = useState<string[]>([]);
   const [conversationCount, setConversationCount] = useState<number>(1);
 
   // Voice speech synthesis sound state
   const [isAiVoiceMuted, setIsAiVoiceMuted] = useState<boolean>(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState<boolean>(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   // Auto report generation flag when 100% reached
   const [isAutoGenerating, setIsAutoGenerating] = useState<boolean>(false);
@@ -81,13 +71,13 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
     {
       id: 'm-init',
       sender: 'ai',
-      text: `Xin chào CEO ${initialProfile.ceoName || 'Lãnh Đạo'}. Hãy xem đây như một phiên tư vấn chiến lược cấp cao trực tiếp giữa hai cộng sự điều hành.\n\nAnh/chị có thể chọn nhắn tin hoặc bấm sang biểu tượng Micro để đối thoại giọng nói. AI sẽ tự động phân tích và chuyển hóa vào Bản Đồ Chiến Lược Canvas 9 Danh Mục.\n\nKhởi động: Sản phẩm hoặc dịch vụ cốt lõi mang lại dòng doanh thu chính cho ${initialProfile.businessName || 'doanh nghiệp'} hiện nay là gì?`,
+      text: `Xin chào CEO ${initialProfile.ceoName || 'Lãnh Đạo'}. Hãy xem đây như một buổi tư vấn chiến lược trực tiếp giữa hai cộng sự điều hành.\n\nAnh/chị có thể chọn Nhắn tin hoặc chuyển sang Giọng nói để đối thoại trực tiếp. Khi thu thập đủ 100% dữ liệu, hệ thống sẽ tự động tạo Báo cáo Chiến lược.\n\nKhởi động: Sản phẩm hoặc dịch vụ cốt lõi mang lại dòng doanh thu chính cho ${initialProfile.businessName || 'doanh nghiệp'} hiện nay là gì?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       quickAnswers: [
         'Sản xuất & Chế biến thực phẩm (F&B / Bán buôn)',
-        'Kinh doanh bán lẻ / Chuỗi cửa hàng phân phối',
-        'Dịch vụ tư vấn / B2B / Giải pháp doanh nghiệp',
-        'Bán hàng Online / Thương mại điện tử đa kênh',
+        'Kinh doanh bán lẻ / Chuỗi phân phối',
+        'Dịch vụ tư vấn / B2B / Giải pháp',
+        'Bán hàng Online / Thương mại điện tử',
       ],
       stepIndex: 1,
     },
@@ -102,53 +92,178 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-  // Auto scroll to latest message
+  // Auto scroll to latest message in chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading, voiceLiveTranscript]);
+  }, [messages, isLoading]);
 
-  // Read latest AI message aloud when in voice mode
-  const speakText = (text: string) => {
+  // Load and cache browser voices for optimal Vietnamese pronunciation
+  useEffect(() => {
+    const updateVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const available = window.speechSynthesis.getVoices();
+        if (available && available.length > 0) {
+          setVoices(available);
+        }
+      }
+    };
+
+    updateVoices();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  // Helper to pick the best Vietnamese female voice
+  const getVietnameseFemaleVoice = (list: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+    if (!list || list.length === 0) return null;
+
+    const viVoices = list.filter(
+      (v) =>
+        v.lang.toLowerCase().startsWith('vi') ||
+        v.lang.toLowerCase().includes('vi-vn') ||
+        v.name.toLowerCase().includes('vietnam') ||
+        v.name.toLowerCase().includes('tiếng việt')
+    );
+
+    if (viVoices.length === 0) return null;
+
+    // Prioritize natural female names
+    const female = viVoices.find((v) => {
+      const n = v.name.toLowerCase();
+      return (
+        n.includes('female') ||
+        n.includes('nữ') ||
+        n.includes('hoaimy') ||
+        n.includes('linh') ||
+        n.includes('mai') ||
+        n.includes('chi') ||
+        n.includes('an') ||
+        n.includes('natural') ||
+        n.includes('google')
+      );
+    });
+
+    return female || viVoices[0];
+  };
+
+  // Natural Vietnamese Female Voice Engine
+  const speakAiMessage = (rawText: string) => {
     if (isAiVoiceMuted) return;
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    try {
+    // Clean text: strip markdown symbols, asterisks, brackets, hashes
+    const cleanText = rawText
+      .replace(/[*_#>`~]/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\[.*?\]/g, '')
+      .replace(/\n+/g, '. ')
+      .trim();
+
+    if (!cleanText) return;
+
+    // Cancel ongoing speech or audio
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
-      // Clean up markdown / newlines for voice clarity
-      const cleanText = text.replace(/[*_#]/g, '').trim();
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'vi-VN';
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
+    }
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.currentTime = 0;
+    }
 
-      utterance.onstart = () => setIsAiSpeaking(true);
-      utterance.onend = () => setIsAiSpeaking(false);
-      utterance.onerror = () => setIsAiSpeaking(false);
+    const currentVoices =
+      voices.length > 0
+        ? voices
+        : typeof window !== 'undefined' && window.speechSynthesis
+        ? window.speechSynthesis.getVoices()
+        : [];
 
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn('Speech synthesis error:', e);
+    const viVoice = getVietnameseFemaleVoice(currentVoices);
+
+    // If browser provides a Vietnamese voice, use Web Speech API with tuned female pitch & rate
+    if (typeof window !== 'undefined' && window.speechSynthesis && viVoice) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.voice = viVoice;
+        utterance.lang = viVoice.lang || 'vi-VN';
+        utterance.pitch = 1.08; // Warm, natural female pitch
+        utterance.rate = 0.96; // Articulate, clear speaking rate
+
+        utterance.onstart = () => setIsAiSpeaking(true);
+        utterance.onend = () => setIsAiSpeaking(false);
+        utterance.onerror = () => setIsAiSpeaking(false);
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch (err) {
+        console.warn('SpeechSynthesis error:', err);
+      }
+    }
+
+    // High quality fallback via Google Vietnamese Female audio stream
+    try {
+      setIsAiSpeaking(true);
+      const textToPlay = cleanText.length > 200 ? cleanText.slice(0, 195) + '...' : cleanText;
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(
+        textToPlay
+      )}`;
+      const audio = new Audio(audioUrl);
+      audioPlayerRef.current = audio;
+
+      audio.onended = () => setIsAiSpeaking(false);
+      audio.onerror = () => {
+        // Last-ditch native fallback
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          const u = new SpeechSynthesisUtterance(cleanText);
+          u.lang = 'vi-VN';
+          u.pitch = 1.1;
+          u.rate = 0.95;
+          u.onstart = () => setIsAiSpeaking(true);
+          u.onend = () => setIsAiSpeaking(false);
+          u.onerror = () => setIsAiSpeaking(false);
+          window.speechSynthesis.speak(u);
+        } else {
+          setIsAiSpeaking(false);
+        }
+      };
+
+      audio.play().catch(() => {
+        setIsAiSpeaking(false);
+      });
+    } catch {
       setIsAiSpeaking(false);
     }
   };
 
-  // Trigger speech when channel is voice and AI sends a new message
+  // Read latest AI message aloud immediately when in voice mode
   useEffect(() => {
     if (channel === 'voice' && !isAiVoiceMuted) {
-      const latest = [...messages].reverse().find((m) => m.sender === 'ai');
-      if (latest) {
-        speakText(latest.text);
+      const latestAi = [...messages].reverse().find((m) => m.sender === 'ai');
+      if (latestAi) {
+        const timer = setTimeout(() => {
+          speakAiMessage(latestAi.text);
+        }, 350);
+        return () => clearTimeout(timer);
       }
     } else {
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
-        setIsAiSpeaking(false);
       }
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setIsAiSpeaking(false);
     }
   }, [channel, messages, isAiVoiceMuted]);
 
-  // Web Speech Recognition Setup
+  // Web Speech Recognition for CEO voice input
   useEffect(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -187,36 +302,49 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
     };
   }, []);
 
-  const toggleRecording = () => {
+  // Toggle voice recording (CEO taps mic to speak or stop & send)
+  const toggleRecordingInVoiceMode = () => {
     if (!recognitionRef.current) {
-      alert('Trình duyệt chưa hỗ trợ Web Speech API tiếng Việt. Bạn có thể chọn nhanh gợi ý hoặc gõ phím.');
+      alert('Trình duyệt chưa hỗ trợ ghi âm trực tiếp. Bạn có thể chuyển sang chế độ Chat để nhập liệu thuận tiện.');
       return;
     }
 
+    // If AI is currently speaking, stop it so CEO can talk
+    if (isAiSpeaking) {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setIsAiSpeaking(false);
+    }
+
     if (isRecording) {
+      // CEO finished speaking and tapped mic: automatically send
       recognitionRef.current.stop();
       setIsRecording(false);
+
+      const capturedText = (voiceLiveTranscript || inputVal).trim();
+      if (capturedText) {
+        handleSendAnswer(capturedText);
+      }
     } else {
+      // Start recording
       try {
         setVoiceLiveTranscript('');
+        setInputVal('');
         recognitionRef.current.start();
         setIsRecording(true);
       } catch (err) {
         console.warn('Mic start error:', err);
       }
-    }
-  };
-
-  const handleInsertPainPoint = (painText: string) => {
-    setInputVal((prev) => {
-      if (!prev.trim()) return painText;
-      return `${prev.trim()} - ${painText}`;
-    });
-    if (textareaRef.current) {
-      textareaRef.current.focus();
     }
   };
 
@@ -230,10 +358,12 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       setIsRecording(false);
     }
 
-    // Stop speaking if AI was speaking
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       setIsAiSpeaking(false);
+    }
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
     }
 
     setInputVal('');
@@ -309,7 +439,7 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       if (isCompleteCondition) {
         setDataConfidence(100);
         setIsAutoGenerating(true);
-        // Tự động kích hoạt tổng hợp và chuyển dashboard sau 1 giây
+        // Tự động kích hoạt tổng hợp và chuyển dashboard sau 1.2 giây
         setTimeout(() => {
           handleCompleteCheckup(updatedHistory);
         }, 1200);
@@ -393,56 +523,58 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex flex-col justify-between font-sans bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
       
-      {/* 1. TOP HEADER COMPACT: THU GỌN TỐI ĐA ĐỂ ƯU TIÊN DIỆN TÍCH CHO PHÒNG KHÁM */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-3">
+      {/* 1. TOP HEADER & COMPACT CONTROLS */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
           
-          {/* Brand & Clinic Title */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+          {/* Logo & Brand Info */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-sm shadow-sm">
               AI
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                  Phòng Khám Chiến Lược
-                </span>
-                <span className="text-xs font-bold text-slate-800 truncate max-w-[140px] sm:max-w-xs">
+                <h1 className="text-sm font-black text-slate-900 tracking-tight">
+                  Phòng Khám Chiến Lược AI
+                </h1>
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                   {profile.businessName}
                 </span>
               </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                CEO: {profile.ceoName || 'Lãnh Đạo'} • Ngành: {profile.industry || 'Chưa chọn'}
+              </p>
             </div>
           </div>
 
-          {/* 2 Chế độ (Chat / Giọng nói) & 2 Mức độ (Tiêu chuẩn / Chuyên sâu) */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Right Action Bar: Channel Switch + Depth Switch + Return Home */}
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
             
-            {/* Chế độ tương tác: Chat vs Voice */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            {/* Chế độ tương tác: Chat vs Giọng Nói */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
               <button
                 type="button"
                 onClick={() => setChannel('chat')}
-                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   channel === 'chat'
                     ? 'bg-white text-blue-700 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Nhắn tin dạng chat"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>Chat</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setChannel('voice')}
-                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   channel === 'voice'
-                    ? 'bg-rose-600 text-white shadow-xs animate-pulse'
+                    ? 'bg-rose-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Đối thoại bằng giọng nói"
               >
                 <Mic className="w-3.5 h-3.5" />
                 <span>Giọng Nói</span>
@@ -450,11 +582,11 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
             </div>
 
             {/* Mức độ tương tác: Tiêu chuẩn vs Chuyên sâu */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <div className="hidden md:flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
               <button
                 type="button"
                 onClick={() => setDepth('standard')}
-                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   depth === 'standard'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -465,7 +597,7 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
               <button
                 type="button"
                 onClick={() => setDepth('deep')}
-                className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   depth === 'deep'
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -523,12 +655,12 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-5 flex flex-col">
         
         {/* ======================================================== */}
-        {/* CHẾ ĐỘ 1: GIAO DIỆN CHAT NHẮN TIN TRỰC TIẾP (iMessage / ChatGPT) */}
+        {/* CHẾ ĐỘ 1: GIAO DIỆN CHAT NHẮN TIN TINH GỌN (ĐÃ LÀM GỌN, TẠM BỎ MIC Ở ĐÂY) */}
         {/* ======================================================== */}
         {channel === 'chat' && (
           <div className="flex-1 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[500px]">
             
-            {/* Stream tin nhắn */}
+            {/* Stream tin nhắn trực quan */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               {messages.map((msg) => {
                 const isAi = msg.sender === 'ai';
@@ -581,19 +713,19 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Answers Bar (1-Click Buttons) */}
+            {/* Quick Answers Bar (Gợi ý nhanh tinh tế nếu có) */}
             {latestAiMessage?.quickAnswers && latestAiMessage.quickAnswers.length > 0 && !isLoading && (
-              <div className="px-4 py-2 bg-blue-50/60 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                <span className="text-[11px] font-black text-blue-800 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                  Gợi ý nhanh:
+              <div className="px-4 py-2 bg-blue-50/50 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-blue-600" />
+                  Gợi ý:
                 </span>
                 <div className="flex items-center gap-1.5 flex-nowrap">
                   {latestAiMessage.quickAnswers.map((opt, i) => (
                     <button
                       key={i}
                       onClick={() => handleSendAnswer(opt)}
-                      className="text-xs text-slate-700 bg-white hover:bg-blue-600 hover:text-white font-bold px-3 py-1.5 rounded-full border border-slate-200 hover:border-blue-600 shrink-0 transition-all shadow-2xs whitespace-nowrap cursor-pointer"
+                      className="text-xs text-slate-700 bg-white hover:bg-blue-600 hover:text-white font-semibold px-3 py-1 rounded-full border border-slate-200 hover:border-blue-600 shrink-0 transition-all shadow-2xs whitespace-nowrap cursor-pointer"
                     >
                       {opt}
                     </button>
@@ -602,94 +734,37 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
               </div>
             )}
 
-            {/* Common Pain Point Hot Tags */}
-            <div className="px-4 py-2 bg-slate-50/80 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider shrink-0">
-                Thường gặp:
-              </span>
-              <div className="flex items-center gap-1.5 flex-nowrap">
-                {COMMON_PAIN_POINTS.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleInsertPainPoint(item.text)}
-                    className="text-[11px] text-slate-600 bg-white hover:bg-amber-50 hover:text-amber-900 hover:border-amber-300 px-2.5 py-1 rounded-lg border border-slate-200 shrink-0 transition-all whitespace-nowrap cursor-pointer font-medium"
-                    title="Bấm để chèn vào câu trả lời"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Pinned Input Bar at Bottom (Chuẩn như màn hình nhắn tin) */}
+            {/* Sleek Input Bar at Bottom (Đã làm gọn & tạm bỏ Mic ở đây theo đúng yêu cầu) */}
             <div className="p-3 sm:p-4 bg-white border-t border-slate-200">
-              
-              {isRecording && (
-                <div className="mb-2 p-2.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between text-xs text-rose-700 font-bold animate-pulse">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
-                    <span>Đang ghi âm tiếng Việt: Hãy nói tự nhiên, xong bấm "Gửi".</span>
-                  </div>
-                  <button
-                    onClick={toggleRecording}
-                    className="px-2.5 py-1 bg-rose-600 text-white rounded-xl text-[11px] font-bold cursor-pointer"
-                  >
-                    Dừng
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-end gap-2">
-                
-                {/* Nút Mic nhanh */}
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  title={isRecording ? 'Dừng ghi âm' : 'Bật mic nói tiếng Việt'}
-                  className={`p-3 rounded-2xl transition-all shrink-0 cursor-pointer ${
-                    isRecording
-                      ? 'bg-rose-600 text-white shadow-md animate-pulse'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                </button>
-
+              <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
-                  <textarea
-                    ref={textareaRef}
-                    rows={2}
+                  <input
+                    type="text"
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === 'Enter') {
                         e.preventDefault();
                         handleSendAnswer();
                       }
                     }}
-                    placeholder={
-                      isRecording
-                        ? 'Đang nhận diện giọng nói...'
-                        : 'Nhập câu trả lời của CEO (Nhấn Enter để gửi)...'
-                    }
-                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-slate-900 resize-none font-medium"
+                    placeholder="Nhập câu trả lời hoặc chia sẻ của CEO (Nhấn Enter để gửi)..."
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-slate-900 font-medium"
                   />
                 </div>
 
                 <button
                   onClick={() => handleSendAnswer()}
-                  disabled={(!inputVal.trim() && !voiceLiveTranscript.trim()) || isLoading}
-                  className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs transition-all shrink-0 flex items-center gap-1.5 shadow-sm mb-1 cursor-pointer"
+                  disabled={!inputVal.trim() || isLoading}
+                  className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold text-xs transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   <span>Gửi</span>
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 px-1 font-medium">
-                <span>💡 Tự động xuất kết quả khi đạt đủ 100% dữ liệu</span>
-                <span>Lượt trao đổi: #{conversationCount}</span>
+              <div className="mt-2 text-center text-[11px] text-slate-400 font-medium">
+                💡 Đủ 100% dữ liệu sẽ tự động tạo báo cáo chiến lược • Lượt trao đổi: #{conversationCount}
               </div>
             </div>
 
@@ -697,153 +772,181 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
         )}
 
         {/* ======================================================== */}
-        {/* CHẾ ĐỘ 2: GIAO DIỆN GIỌNG NÓI VOICE AI ĐẲNG CẤP */}
+        {/* CHẾ ĐỘ 2: GIAO DIỆN GIỌNG NÓI TỐI GIẢN CHUẨN VIP CALL */}
+        {/* (Màn hình chỉ hiện Mic & trạng thái gọi, AI phát giọng nữ tiếng Việt rõ ràng, CEO bấm mic để nói) */}
         {/* ======================================================== */}
         {channel === 'voice' && (
-          <div className="flex-1 flex flex-col justify-between bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm text-center relative overflow-hidden min-h-[520px]">
+          <div className="flex-1 flex flex-col justify-between items-center bg-gradient-to-b from-slate-900 via-slate-950 to-indigo-950 text-white rounded-3xl border border-slate-800 p-6 sm:p-10 shadow-2xl relative overflow-hidden min-h-[520px]">
             
-            {/* Ambient Background Aura */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            {/* Ambient Aura Lighting */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -top-10 -right-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
-            {/* Voice Header Card: Câu hỏi hiện tại của AI */}
-            <div className="max-w-2xl mx-auto space-y-3 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">
-                <Radio className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
-                <span>CHẾ ĐỘ ĐỐI THOẠI GIỌNG NÓI TRỰC TIẾP</span>
+            {/* 1. Header: Cuộc gọi trực tiếp AI Strategic Advisor */}
+            <div className="text-center space-y-2 relative z-10">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wide">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>CUỘC GỌI CHIẾN LƯỢC TRỰC TIẾP</span>
               </div>
-
-              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 text-left shadow-2xs">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1.5">
-                  <span className="flex items-center gap-1.5 text-blue-700">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                    AI Cố Vấn Chiến Lược
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsAiVoiceMuted(!isAiVoiceMuted)}
-                    className="text-slate-400 hover:text-slate-700 flex items-center gap-1 cursor-pointer"
-                    title={isAiVoiceMuted ? 'Bật âm thanh AI đọc' : 'Tắt âm thanh AI đọc'}
-                  >
-                    {isAiVoiceMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-blue-600" />}
-                    <span className="text-[10px]">{isAiVoiceMuted ? 'Đã tắt tiếng' : 'Đang bật tiếng'}</span>
-                  </button>
-                </div>
-
-                <p className="text-sm sm:text-base font-semibold text-slate-800 leading-relaxed">
-                  {latestAiMessage?.text || 'Xin chào CEO, vui lòng nhấn micro bên dưới để bắt đầu chia sẻ...'}
-                </p>
-              </div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-100 tracking-tight">
+                Cố Vấn Chiến Lược AI (Giọng Nữ)
+              </h2>
+              <p className="text-xs text-slate-400 font-medium">
+                Đối thoại 1-1 với CEO {profile.ceoName || 'Doanh Nghiệp'} • {profile.businessName}
+              </p>
             </div>
 
-            {/* ORB MICROPHONE TRUNG TÂM NHẤP NHÁY TRẠNG THÁI (PULSING / BREATHING WAVE) */}
-            <div className="py-6 sm:py-8 flex flex-col items-center justify-center relative z-10">
+            {/* 2. CENTER: MÀN HÌNH CHỈ HIỆN MIC VÀ HIỆU ỨNG SÓNG ÂM THANH SANG TRỌNG */}
+            <div className="my-auto flex flex-col items-center justify-center relative z-10 py-6">
               
-              {/* Outer Pulsing Wave Rings */}
+              {/* Outer Concentric Wave Rings */}
               <div className="relative flex items-center justify-center">
-                {isRecording && (
+                
+                {/* When AI is Speaking (Blue/Purple Ripple) */}
+                {isAiSpeaking && (
                   <>
-                    <div className="absolute w-36 h-36 rounded-full bg-rose-400/20 animate-ping pointer-events-none"></div>
-                    <div className="absolute w-48 h-48 rounded-full border border-rose-300 animate-pulse pointer-events-none"></div>
+                    <div className="absolute w-44 h-44 sm:w-52 sm:h-52 rounded-full bg-blue-500/20 animate-ping pointer-events-none"></div>
+                    <div className="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full border border-blue-400/40 animate-pulse pointer-events-none"></div>
                   </>
                 )}
 
-                {isAiSpeaking && (
-                  <div className="absolute w-40 h-40 rounded-full bg-blue-400/20 animate-pulse pointer-events-none"></div>
+                {/* When CEO is Speaking / Recording (Crimson/Rose Glow) */}
+                {isRecording && (
+                  <>
+                    <div className="absolute w-44 h-44 sm:w-52 sm:h-52 rounded-full bg-rose-500/25 animate-ping pointer-events-none"></div>
+                    <div className="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full border border-rose-400/50 animate-pulse pointer-events-none"></div>
+                  </>
                 )}
 
-                {/* Big Mic Button */}
+                {/* When Idle Waiting for CEO (Gentle Cyan Breathing) */}
+                {!isAiSpeaking && !isRecording && !isLoading && (
+                  <div className="absolute w-40 h-40 sm:w-48 sm:h-48 rounded-full border border-slate-700/60 animate-pulse pointer-events-none"></div>
+                )}
+
+                {/* Big Center Microphone Button */}
                 <button
                   type="button"
-                  onClick={toggleRecording}
-                  className={`relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-full flex flex-col items-center justify-center text-white shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${
+                  onClick={toggleRecordingInVoiceMode}
+                  className={`relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full flex flex-col items-center justify-center text-white shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${
                     isRecording
-                      ? 'bg-gradient-to-tr from-rose-600 to-red-500 shadow-rose-500/40 ring-4 ring-rose-400/30 animate-pulse'
+                      ? 'bg-gradient-to-tr from-rose-600 to-red-500 ring-8 ring-rose-500/30 shadow-rose-600/50 animate-pulse'
                       : isAiSpeaking
-                      ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/30'
-                      : 'bg-gradient-to-tr from-slate-900 to-indigo-950 shadow-slate-900/30 hover:bg-slate-800'
+                      ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 ring-6 ring-blue-500/30 shadow-blue-600/40'
+                      : isLoading
+                      ? 'bg-slate-800 ring-4 ring-slate-700 animate-pulse'
+                      : 'bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-500 ring-6 ring-cyan-500/20 shadow-cyan-500/30 hover:ring-cyan-400/40'
                   }`}
+                  title={isRecording ? 'Nhấn để hoàn tất câu nói & gửi' : 'Nhấn mic để bắt đầu nói'}
                 >
                   {isRecording ? (
-                    <Mic className="w-10 h-10 sm:w-12 sm:h-12 animate-bounce" />
+                    <Mic className="w-12 h-12 sm:w-14 sm:h-14 animate-bounce text-white" />
+                  ) : isAiSpeaking ? (
+                    <Volume2 className="w-12 h-12 sm:w-14 sm:h-14 animate-pulse text-white" />
+                  ) : isLoading ? (
+                    <Loader2 className="w-12 h-12 sm:w-14 sm:h-14 animate-spin text-slate-300" />
                   ) : (
-                    <Mic className="w-10 h-10 sm:w-12 sm:h-12 text-slate-100" />
+                    <Mic className="w-12 h-12 sm:w-14 sm:h-14 text-white" />
                   )}
-                  <span className="text-[10px] font-black uppercase tracking-wider mt-1">
-                    {isRecording ? 'Đang Nghe' : 'Nhấn Để Nói'}
+
+                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider mt-1 sm:mt-2 text-white/95">
+                    {isRecording
+                      ? 'Nhấn Gửi'
+                      : isAiSpeaking
+                      ? 'AI Đang Nói'
+                      : isLoading
+                      ? 'Đang Xử Lý'
+                      : 'Nhấn Để Nói'}
                   </span>
                 </button>
               </div>
 
-              {/* Status Note Trạng Thái Khi Đang Voice */}
-              <div className="mt-5 space-y-1">
-                <div className="text-sm font-black text-slate-800 flex items-center justify-center gap-2">
-                  {isRecording ? (
-                    <>
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
-                      <span className="text-rose-600">Micro đang bật • Hãy nói câu trả lời của CEO...</span>
-                    </>
-                  ) : isAiSpeaking ? (
-                    <>
-                      <Volume2 className="w-4 h-4 text-blue-600 animate-pulse" />
-                      <span className="text-blue-700">AI đang đọc câu hỏi chiến lược...</span>
-                    </>
-                  ) : (
-                    <span className="text-slate-500">Bấm vào biểu tượng Micro tròn để nói tiếng Việt</span>
-                  )}
-                </div>
+              {/* Dynamic Status Indicator (Giống như đang gọi điện thoại) */}
+              <div className="mt-7 text-center space-y-2">
+                
+                {isAiSpeaking ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs sm:text-sm font-bold animate-pulse">
+                    <span className="flex gap-1 items-end h-3">
+                      <span className="w-1 bg-blue-400 h-2 animate-bounce"></span>
+                      <span className="w-1 bg-blue-400 h-3 animate-bounce [animation-delay:0.15s]"></span>
+                      <span className="w-1 bg-blue-400 h-2 animate-bounce [animation-delay:0.3s]"></span>
+                    </span>
+                    <span>AI đang đọc câu hỏi chiến lược...</span>
+                  </div>
+                ) : isRecording ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-300 text-xs sm:text-sm font-bold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                    <span>Đang nghe CEO nói • Nhấn Micro lần nữa để Gửi</span>
+                  </div>
+                ) : isLoading ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800 text-slate-300 text-xs sm:text-sm font-bold">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                    <span>AI đang phân tích câu trả lời của CEO...</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-200 text-xs sm:text-sm font-bold">
+                    <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    <span>Đến lượt CEO • Hãy nhấn Micro ở trên để trả lời</span>
+                  </div>
+                )}
 
-                {/* Live Transcript Stream */}
-                {(voiceLiveTranscript || inputVal) && (
-                  <div className="max-w-xl mx-auto p-3 rounded-xl bg-rose-50/70 border border-rose-200 text-xs text-rose-950 font-medium italic mt-2 animate-fadeIn">
+                {/* Subtitle preview of CEO's words while speaking (chỉ hiện 1 dòng ngắn khi CEO đang nói để kiểm tra, không rườm rà) */}
+                {isRecording && (voiceLiveTranscript || inputVal) && (
+                  <div className="max-w-md mx-auto px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-xs text-rose-200 font-medium italic animate-fadeIn">
                     "{voiceLiveTranscript || inputVal}"
                   </div>
                 )}
               </div>
 
-              {/* Quick Action when speaking */}
-              {(voiceLiveTranscript || inputVal) && (
-                <div className="mt-4 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSendAnswer()}
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Gửi câu trả lời này</span>
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInputVal('');
-                      setVoiceLiveTranscript('');
-                    }}
-                    className="px-3 py-2.5 text-xs text-slate-500 hover:bg-slate-100 rounded-xl cursor-pointer"
-                  >
-                    Xóa
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* Quick Answer Chips Below Mic if User Prefers 1-Click */}
-            {latestAiMessage?.quickAnswers && latestAiMessage.quickAnswers.length > 0 && (
-              <div className="max-w-2xl mx-auto pt-2 relative z-10 w-full">
-                <div className="text-[11px] font-bold text-slate-400 mb-2">
-                  Hoặc bấm nhanh câu trả lời phù hợp:
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  {latestAiMessage.quickAnswers.map((opt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSendAnswer(opt)}
-                      className="text-xs text-slate-700 bg-white hover:bg-blue-600 hover:text-white font-bold px-3 py-1.5 rounded-full border border-slate-200 hover:border-blue-600 transition-all shadow-2xs cursor-pointer"
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* 3. Bottom Controls: Replay Audio + Mute/Unmute + Switch back to Chat */}
+            <div className="w-full pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 relative z-10 flex-wrap gap-2">
+              
+              {/* Nút nghe lại câu hỏi bằng giọng nữ AI */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (latestAiMessage) {
+                    speakAiMessage(latestAiMessage.text);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition-all cursor-pointer shadow-xs"
+                title="Bấm để AI đọc lại câu hỏi"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Nghe lại câu hỏi</span>
+              </button>
+
+              {/* Tắt / Bật tiếng */}
+              <button
+                type="button"
+                onClick={() => setIsAiVoiceMuted(!isAiVoiceMuted)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-slate-800/70 text-slate-300 font-medium transition-all cursor-pointer"
+              >
+                {isAiVoiceMuted ? (
+                  <>
+                    <VolumeX className="w-4 h-4 text-rose-400" />
+                    <span>Đã tắt tiếng</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                    <span>Giọng Nữ Tiếng Việt</span>
+                  </>
+                )}
+              </button>
+
+              {/* Chuyển nhanh sang Chat */}
+              <button
+                type="button"
+                onClick={() => setChannel('chat')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 font-bold border border-blue-500/30 transition-all cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Đổi sang Chat</span>
+              </button>
+
+            </div>
 
           </div>
         )}
@@ -851,43 +954,38 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       </main>
 
       {/* 3. TIẾN TRÌNH CÁC BƯỚC NẰM GỌN GÀNG PHÍA DƯỚI (CHIẾM DIỆN TÍCH NHỎ, ƯU TIÊN MÀN HÌNH CHAT/VOICE) */}
-      <footer className="w-full bg-white/95 backdrop-blur-xs border-t border-slate-200 py-2 sm:py-2.5 px-3 sm:px-6">
+      <footer className="w-full bg-white/95 backdrop-blur-xs border-t border-slate-200 py-2 sm:py-2.5 px-3 sm:px-6 shadow-2xs">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Tiến trình:
-            </span>
-          </div>
+          {STRATEGIC_PILLARS.map((pillar) => {
+            const isCompleted = pillar.id < currentStep;
+            const isCurrent = pillar.id === currentStep;
 
-          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar">
-            {STRATEGIC_PILLARS.map((st) => {
-              const isDone = st.id < currentStep;
-              const isCurrent = st.id === currentStep;
-              const Icon = st.icon;
-
-              return (
-                <div
-                  key={st.id}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
-                    isCurrent
-                      ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/20'
-                      : isDone
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                      : 'bg-slate-100 text-slate-400'
-                  }`}
-                  title={st.desc}
-                >
-                  <Icon className="w-3 h-3 shrink-0" />
-                  <span className="text-[11px] whitespace-nowrap">{st.short}</span>
-                  {isDone && <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="text-[11px] font-black text-blue-700 shrink-0 hidden sm:block whitespace-nowrap">
-            {dataConfidence}% / 100%
-          </div>
+            return (
+              <div
+                key={pillar.id}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs whitespace-nowrap transition-all ${
+                  isCurrent
+                    ? 'bg-blue-50 border border-blue-300 text-blue-800 font-black shadow-2xs'
+                    : isCompleted
+                    ? 'text-emerald-700 font-bold'
+                    : 'text-slate-400 font-medium'
+                }`}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                ) : (
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 ${
+                      isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {pillar.id}
+                  </span>
+                )}
+                <span>{pillar.short}</span>
+              </div>
+            );
+          })}
         </div>
       </footer>
 
