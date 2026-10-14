@@ -512,7 +512,9 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
                 style={{ width: `${Math.max(dataConfidence, 20)}%` }}
               ></div>
             </div>
-            <span className="font-black text-blue-700 text-[11px]">{dataConfidence}%</span>
+            <span className="font-black text-blue-700 text-[11px] whitespace-nowrap">
+              {dataConfidence}% <span className="hidden sm:inline font-normal text-slate-400">• Đủ 100% tự động tạo báo cáo</span>
+            </span>
           </div>
         </div>
       </header>
@@ -847,6 +849,47 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
         )}
 
       </main>
+
+      {/* 3. TIẾN TRÌNH CÁC BƯỚC NẰM GỌN GÀNG PHÍA DƯỚI (CHIẾM DIỆN TÍCH NHỎ, ƯU TIÊN MÀN HÌNH CHAT/VOICE) */}
+      <footer className="w-full bg-white/95 backdrop-blur-xs border-t border-slate-200 py-2 sm:py-2.5 px-3 sm:px-6">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Tiến trình:
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar">
+            {STRATEGIC_PILLARS.map((st) => {
+              const isDone = st.id < currentStep;
+              const isCurrent = st.id === currentStep;
+              const Icon = st.icon;
+
+              return (
+                <div
+                  key={st.id}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
+                    isCurrent
+                      ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/20'
+                      : isDone
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-slate-100 text-slate-400'
+                  }`}
+                  title={st.desc}
+                >
+                  <Icon className="w-3 h-3 shrink-0" />
+                  <span className="text-[11px] whitespace-nowrap">{st.short}</span>
+                  {isDone && <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-[11px] font-black text-blue-700 shrink-0 hidden sm:block whitespace-nowrap">
+            {dataConfidence}% / 100%
+          </div>
+        </div>
+      </footer>
 
     </div>
   );
