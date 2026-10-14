@@ -40,7 +40,7 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
   const [ceoName, setCeoName] = useState<string>('');
   const [email, setEmail] = useState<string>('eduzteam09@gmail.com');
   const [businessName, setBusinessName] = useState<string>('');
-  const [industry, setIndustry] = useState<string>('Sản xuất thực phẩm & Đồ uống (F&B)');
+  const [industry, setIndustry] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,17 +112,17 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
 
               {/* Quick sample button for Nước Mắm Hải Hương */}
               <div className="pt-2 flex items-center gap-2.5 flex-wrap">
-                <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Hồ sơ chẩn đoán chuẩn mực:</span>
+                <span className="text-xs text-slate-400 font-semibold flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Hồ sơ mẫu chuẩn:</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => onExploreSample('hai-huong')}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black border border-blue-400/30 shadow-md shadow-blue-500/20 transition-all hover:scale-[1.02] cursor-pointer flex items-center gap-2"
+                  className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/20 shadow-xs hover:border-amber-400/50 transition-all cursor-pointer flex items-center gap-2 group"
                 >
-                  <span>Nước Mắm Hải Hương (OCOP 4 Sao)</span>
-                  <span className="text-amber-300 font-bold">→ Xem Báo Cáo</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="text-slate-100 group-hover:text-white">Nước Mắm Hải Hương (OCOP 4 Sao)</span>
                 </button>
               </div>
 
@@ -196,18 +196,33 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
                     <Briefcase className="w-3.5 h-3.5 text-blue-600" />
                     <span>Ngành Nghề Hoạt Động</span>
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    required
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
-                    className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-600 text-slate-900 font-bold transition-all cursor-pointer"
-                  >
-                    <option value="Sản xuất thực phẩm & Đồ uống (F&B)">Sản xuất thực phẩm &amp; Đồ uống (F&B)</option>
-                    <option value="Bán lẻ & Chuỗi phân phối tiêu dùng">Bán lẻ &amp; Chuỗi phân phối tiêu dùng</option>
-                    <option value="Dịch vụ B2B, Tư vấn & Đào tạo">Dịch vụ B2B, Tư vấn &amp; Đào tạo</option>
-                    <option value="Công nghệ số, Phần mềm & AI">Công nghệ số, Phần mềm &amp; AI</option>
-                    <option value="Y tế, Chăm sóc sức khỏe & Thẩm mỹ">Y tế, Chăm sóc sức khỏe &amp; Thẩm mỹ</option>
-                    <option value="Nông nghiệp & Sản phẩm làng nghề OCOP">Nông nghiệp &amp; Sản phẩm làng nghề OCOP</option>
-                  </select>
+                    placeholder="Nhập ngành nghề (Ví dụ: Sản xuất F&B, Bán lẻ mỹ phẩm, Dịch vụ B2B...)"
+                    className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-600 text-slate-900 font-bold transition-all placeholder:font-normal placeholder:text-slate-400"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                    <span className="text-[11px] text-slate-400 font-medium">Gợi ý nhanh:</span>
+                    {[
+                      'Sản xuất & Chế biến F&B',
+                      'Bán lẻ & Thương mại',
+                      'Dịch vụ B2B & Tư vấn',
+                      'Nông nghiệp OCOP',
+                      'Y tế & Chăm sóc sức khỏe',
+                    ].map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setIndustry(item)}
+                        className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 border border-slate-200 transition-colors cursor-pointer"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Submit CTA */}
@@ -390,7 +405,7 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
               onClick={() => onExploreSample('hai-huong')}
               className="text-xs font-black text-blue-600 hover:text-blue-800 flex items-center gap-1.5 hover:underline cursor-pointer"
             >
-              <span>Xem Toàn Bộ Bảng Kết Quả Mẫu</span>
+              <span>Khám Phá Bản Đồ Mẫu Hải Hương (OCOP)</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
