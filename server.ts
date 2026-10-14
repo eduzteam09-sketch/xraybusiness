@@ -50,7 +50,101 @@ async function startServer() {
     });
   });
 
-  // API Check Mail Service status
+  // API Natural Vietnamese Female Voice TTS proxy
+  app.all("/api/tts", async (req, res) => {
+    try {
+      const rawText =
+        (req.query.text as string) ||
+        (req.body && req.body.text ? String(req.body.text) : "") ||
+        "";
+
+      if (!rawText.trim()) {
+        res.status(400).json({ error: "Text parameter is required" });
+        return;
+      }
+
+      const cleanText = rawText
+        .replace(/[*_#>`~]/g, "")
+        .replace(/\(.*?\)/g, "")
+        .replace(/\[.*?\]/g, "")
+        .replace(/•/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!cleanText) {
+        res.status(400).json({ error: "Text after cleaning is empty" });
+        return;
+      }
+
+      // Split into chunks <= 180 chars
+      const sentences = cleanText.match(/[^.?!,;:\n]+[.?!,;:\n]*/g) || [cleanText];
+      const chunks: string[] = [];
+      let current = "";
+
+      for (const s of sentences) {
+        const trimmed = s.trim();
+        if (!trimmed) continue;
+        if ((current + " " + trimmed).trim().length <= 180) {
+          current = (current + " " + trimmed).trim();
+        } else {
+          if (current) chunks.push(current);
+          if (trimmed.length > 180) {
+            const words = trimmed.split(" ");
+            let wordChunk = "";
+            for (const w of words) {
+              if ((wordChunk + " " + w).trim().length <= 180) {
+                wordChunk = (wordChunk + " " + w).trim();
+              } else {
+                if (wordChunk) chunks.push(wordChunk);
+                wordChunk = w;
+              }
+            }
+            if (wordChunk) chunks.push(wordChunk);
+            current = "";
+          } else {
+            current = trimmed;
+          }
+        }
+      }
+      if (current) chunks.push(current);
+
+      const activeChunks = chunks.slice(0, 4);
+      const buffers: Buffer[] = [];
+
+      for (const chunk of activeChunks) {
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(
+          chunk
+        )}`;
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "audio/mpeg, audio/*;q=0.9",
+          },
+        });
+
+        if (response.ok) {
+          const arrayBuf = await response.arrayBuffer();
+          buffers.push(Buffer.from(arrayBuf));
+        }
+      }
+
+      if (buffers.length === 0) {
+        res.status(502).json({ error: "Failed to fetch Vietnamese audio stream" });
+        return;
+      }
+
+      const combinedBuffer = Buffer.concat(buffers);
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", combinedBuffer.length);
+      res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+      res.status(200).send(combinedBuffer);
+    } catch (error: any) {
+      console.error("Error in /api/tts:", error);
+      res.status(500).json({ error: error.message || "Internal server error in TTS" });
+    }
+  });
+
   app.get("/api/smtp-status", (req, res) => {
     const hasSmtp = Boolean(process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.SMTP_PASSWORD));
     const hasResend = Boolean(getResend());

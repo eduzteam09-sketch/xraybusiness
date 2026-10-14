@@ -4,7 +4,6 @@ import {
   ShieldCheck,
   Building2,
   User,
-  Mail,
   Briefcase,
   CheckCircle2,
   Sparkles,
@@ -26,7 +25,7 @@ import { SAMPLE_PROFILES_LIST } from '../data/sampleProfiles';
 interface LandingHomeProps {
   onStartCheckup: (formData?: {
     ceoName: string;
-    email: string;
+    email?: string;
     businessName: string;
     industry: string;
   }) => void;
@@ -38,7 +37,6 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
   onExploreSample,
 }) => {
   const [ceoName, setCeoName] = useState<string>('');
-  const [email, setEmail] = useState<string>('eduzteam09@gmail.com');
   const [businessName, setBusinessName] = useState<string>('');
   const [industry, setIndustry] = useState<string>('');
 
@@ -46,7 +44,6 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
     e.preventDefault();
     onStartCheckup({
       ceoName: ceoName.trim() || 'CEO',
-      email: email.trim(),
       businessName: businessName.trim() || 'Doanh Nghiệp Của Bạn',
       industry: industry.trim() || 'Kinh doanh & Dịch vụ',
     });
@@ -157,21 +154,6 @@ export const LandingHome: React.FC<LandingHomeProps> = ({
                     value={ceoName}
                     onChange={(e) => setCeoName(e.target.value)}
                     placeholder="Ví dụ: Nguyễn Văn Hoàng"
-                    className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-600 text-slate-900 font-bold transition-all placeholder:font-normal placeholder:text-slate-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Email Nhận Bản Phân Tích &amp; Báo Cáo PDF</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ceo@doanhnghiep.vn"
                     className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-600 text-slate-900 font-bold transition-all placeholder:font-normal placeholder:text-slate-400"
                   />
                 </div>

@@ -24,12 +24,10 @@ export default function App() {
   // Form state for creating a new custom business checkup
   const [newBizForm, setNewBizForm] = useState<{
     ceoName: string;
-    email: string;
     businessName: string;
     industry: string;
   }>({
     ceoName: '',
-    email: 'eduzteam09@gmail.com',
     businessName: '',
     industry: 'Sản xuất thực phẩm & Đồ uống (F&B)',
   });
@@ -72,7 +70,7 @@ export default function App() {
 
   const handleStartNewCheckupFromLanding = (formData?: {
     ceoName: string;
-    email: string;
+    email?: string;
     businessName: string;
     industry: string;
   }) => {
@@ -80,7 +78,6 @@ export default function App() {
       const newProfile: BusinessProfile = {
         id: `biz-${Date.now()}`,
         ceoName: formData.ceoName.trim() || 'CEO',
-        email: formData.email.trim(),
         businessName: formData.businessName.trim(),
         industry: formData.industry.trim() || 'Kinh doanh & Dịch vụ',
         currentTools: ['Zalo', 'Excel'],
@@ -116,7 +113,6 @@ export default function App() {
     const newProfile: BusinessProfile = {
       id: `biz-${Date.now()}`,
       ceoName: newBizForm.ceoName.trim() || 'CEO',
-      email: newBizForm.email.trim(),
       businessName: newBizForm.businessName.trim(),
       industry: newBizForm.industry.trim() || 'Kinh doanh & Dịch vụ',
       currentTools: ['Zalo', 'Excel'],
@@ -252,20 +248,6 @@ export default function App() {
                   value={newBizForm.ceoName}
                   onChange={(e) => setNewBizForm({ ...newBizForm, ceoName: e.target.value })}
                   placeholder="Ví dụ: Anh Hoàng"
-                  className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Email nhận báo cáo chiến lược
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={newBizForm.email}
-                  onChange={(e) => setNewBizForm({ ...newBizForm, email: e.target.value })}
-                  placeholder="ceo@doanhnghiep.vn"
                   className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-900"
                 />
               </div>

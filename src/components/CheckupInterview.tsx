@@ -155,7 +155,7 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
     return female || viVoices[0];
   };
 
-  // Natural Vietnamese Female Voice Engine
+  // Natural Vietnamese Female Voice Engine via /api/tts
   const speakAiMessage = (rawText: string) => {
     if (isAiVoiceMuted) return;
 
@@ -164,6 +164,7 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       .replace(/[*_#>`~]/g, '')
       .replace(/\(.*?\)/g, '')
       .replace(/\[.*?\]/g, '')
+      .replace(/•/g, '')
       .replace(/\n+/g, '. ')
       .trim();
 
@@ -178,68 +179,52 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
       audioPlayerRef.current.currentTime = 0;
     }
 
-    const currentVoices =
-      voices.length > 0
-        ? voices
-        : typeof window !== 'undefined' && window.speechSynthesis
-        ? window.speechSynthesis.getVoices()
-        : [];
+    setIsAiSpeaking(true);
 
-    const viVoice = getVietnameseFemaleVoice(currentVoices);
+    // 1. Primary: Stream authentic Vietnamese female voice via /api/tts
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText)}`;
+    const audio = new Audio(ttsUrl);
+    audioPlayerRef.current = audio;
 
-    // If browser provides a Vietnamese voice, use Web Speech API with tuned female pitch & rate
-    if (typeof window !== 'undefined' && window.speechSynthesis && viVoice) {
-      try {
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.voice = viVoice;
-        utterance.lang = viVoice.lang || 'vi-VN';
-        utterance.pitch = 1.08; // Warm, natural female pitch
-        utterance.rate = 0.96; // Articulate, clear speaking rate
+    audio.onended = () => {
+      setIsAiSpeaking(false);
+    };
 
-        utterance.onstart = () => setIsAiSpeaking(true);
-        utterance.onend = () => setIsAiSpeaking(false);
-        utterance.onerror = () => setIsAiSpeaking(false);
+    audio.onerror = (e) => {
+      console.warn('Backend TTS error, trying browser fallback:', e);
+      // Fallback only if network/server is unreachable
+      const currentVoices =
+        voices.length > 0
+          ? voices
+          : typeof window !== 'undefined' && window.speechSynthesis
+          ? window.speechSynthesis.getVoices()
+          : [];
 
-        window.speechSynthesis.speak(utterance);
-        return;
-      } catch (err) {
-        console.warn('SpeechSynthesis error:', err);
-      }
-    }
+      const viVoice = getVietnameseFemaleVoice(currentVoices);
 
-    // High quality fallback via Google Vietnamese Female audio stream
-    try {
-      setIsAiSpeaking(true);
-      const textToPlay = cleanText.length > 200 ? cleanText.slice(0, 195) + '...' : cleanText;
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(
-        textToPlay
-      )}`;
-      const audio = new Audio(audioUrl);
-      audioPlayerRef.current = audio;
-
-      audio.onended = () => setIsAiSpeaking(false);
-      audio.onerror = () => {
-        // Last-ditch native fallback
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          const u = new SpeechSynthesisUtterance(cleanText);
-          u.lang = 'vi-VN';
-          u.pitch = 1.1;
-          u.rate = 0.95;
-          u.onstart = () => setIsAiSpeaking(true);
-          u.onend = () => setIsAiSpeaking(false);
-          u.onerror = () => setIsAiSpeaking(false);
-          window.speechSynthesis.speak(u);
-        } else {
+      if (typeof window !== 'undefined' && window.speechSynthesis && viVoice) {
+        try {
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          utterance.voice = viVoice;
+          utterance.lang = viVoice.lang || 'vi-VN';
+          utterance.pitch = 1.05;
+          utterance.rate = 0.95;
+          utterance.onstart = () => setIsAiSpeaking(true);
+          utterance.onend = () => setIsAiSpeaking(false);
+          utterance.onerror = () => setIsAiSpeaking(false);
+          window.speechSynthesis.speak(utterance);
+        } catch {
           setIsAiSpeaking(false);
         }
-      };
-
-      audio.play().catch(() => {
+      } else {
         setIsAiSpeaking(false);
-      });
-    } catch {
+      }
+    };
+
+    audio.play().catch((playErr) => {
+      console.warn('Audio playback waiting for user tap:', playErr);
       setIsAiSpeaking(false);
-    }
+    });
   };
 
   // Read latest AI message aloud immediately when in voice mode
@@ -789,7 +774,7 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
                 <span>CUỘC GỌI CHIẾN LƯỢC TRỰC TIẾP</span>
               </div>
               <h2 className="text-lg sm:text-xl font-black text-slate-100 tracking-tight">
-                Cố Vấn Chiến Lược AI (Giọng Nữ)
+                Cố Vấn Chiến Lược AI
               </h2>
               <p className="text-xs text-slate-400 font-medium">
                 Đối thoại 1-1 với CEO {profile.ceoName || 'Doanh Nghiệp'} • {profile.businessName}
@@ -931,7 +916,7 @@ export const CheckupInterview: React.FC<CheckupInterviewProps> = ({
                 ) : (
                   <>
                     <Volume2 className="w-4 h-4 text-emerald-400" />
-                    <span>Giọng Nữ Tiếng Việt</span>
+                    <span>Bật âm thanh</span>
                   </>
                 )}
               </button>
